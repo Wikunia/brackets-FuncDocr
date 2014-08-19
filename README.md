@@ -25,6 +25,7 @@ Have fun and stay tuned!
 ## Next
 * check if the function already has JS/PHPDocs
 * add `@return` 
+* try to guess the `[[Type]]` values
 
 
 
