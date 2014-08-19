@@ -1,0 +1,12 @@
+{
+    "name": "funcdocr",
+    "title": "FuncDocr",
+    "description": "Generates JSDoc,PHPDoc annotations for your functions.",
+    "homepage": "https://github.com/wikunia/brackets-funcdocr",
+    "version": "0.1.0",
+    "author": "Ole Kröger <o.kroeger@wikunia.de>",
+    "license": "Creative Commons v3.0",
+    "engines": {
+        "brackets": ">=0.20.0"
+    }
+}
