@@ -286,6 +286,7 @@ define(function (require, exports, module) {
 	
 	CommandManager.register("funcdocr", COMMAND_ID, handleDocumentation);
 	KeyBindingManager.addBinding(COMMAND_ID, "Ctrl-Alt-D");
+	KeyBindingManager.addBinding(COMMAND_ID, "Cmd-Shift-D","mac");
 	
 	$(EditorManager).on("activeEditorChange", _updateEditorListener);
 	$(EditorManager.getCurrentFullEditor()).on("keyEvent", handleTab);
