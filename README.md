@@ -6,7 +6,7 @@ A brackets extension to generate JS/PHPDocs for your functions.
 * Open a JS or PHP file
 * set your cursor on a function declaration
 	* `function cool(stuff)`
-* Use the ShortCut `Ctrl-Alt-D` for to document
+* Use the ShortCut `Ctrl-Alt-D` to start the documentation
 
 The extension will provide a function documentation:
 ```javascript
