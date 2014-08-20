@@ -37,7 +37,7 @@ define(function (require, exports, module) {
 
     var COMMAND_ID         = 'funcdocr';
     var COMMAND_ID_TAB     = 'funcdocrTab';
-    var FUNCTION_REGEXP    = /function(\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{/;
+    var FUNCTION_REGEXP    = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{/;
     var INDENTATION_REGEXP = /^([\t\ ]*)/;
     var LINE_COUNT         = 0;
 
@@ -76,7 +76,7 @@ define(function (require, exports, module) {
         results.indentation = INDENTATION_REGEXP.exec(line)[0];
         results.parameters  = [];
 
-        var parameters = matches[2].split(',');
+        var parameters = matches[1].split(',');
 
         for (var i = 0; i < parameters.length; ++i) {
             var name = parameters[i].trim();
