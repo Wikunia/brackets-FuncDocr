@@ -17,10 +17,12 @@ The extension will provide a function documentation:
 function cool(stuff)
 ```
 `[[Description]]` will be selected so you can start to type.
-To jump to the next `[[tag]]` you can use `Tab`.
+
 
 Have fun and stay tuned!
 
+## Soon:
+* To jump to the next `[[tag]]` you can use `Tab`. (was buggy)
 
 ## Next
 * check if the function already has JS/PHPDocs
