@@ -130,7 +130,7 @@ define(function (require, exports, module) {
 
         // @TODO Make this actually work
         // Add the return line
-        if (func.return) {
+        if (func.returns) {
             output.push(' * @returns ' + wrapper[0] + '[[Type]]' + wrapper[1] + ' [[Description]]')
         }
 
