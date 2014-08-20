@@ -265,7 +265,7 @@ define(function (require, exports, module) {
         }
 
         if (oldEditor) {
-            $(oldEditor).off('keyEvent', handleTab);$
+            $(oldEditor).off('keyEvent', handleTab);
         }
     }
 
