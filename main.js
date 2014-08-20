@@ -50,7 +50,7 @@ define(function (require, exports, module) {
 
 
     /**
-     * get the current function including .name,.indentation,.type (for prototype),.params,.line
+     * get the current function including .indentation,.type (for prototype),.params,.line
      */
     function getFunction() {
         var results = {};
@@ -74,7 +74,6 @@ define(function (require, exports, module) {
         }
 
         results.indentation = INDENTATION_REGEXP.exec(line)[0];
-        results.name        = matches[1];
         results.parameters  = [];
 
         var parameters = matches[2].split(',');
@@ -248,7 +247,7 @@ define(function (require, exports, module) {
     }
 
 
-    /**
+	/**
     * update the keyEvent listener and remove it from the last document
     * @param {object} event event object
     * @param {editor} newEditor Brackets editor
