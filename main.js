@@ -216,7 +216,7 @@ define(function (require, exports, module) {
     /**
      * Gets the next tabbable field within the doc block based on the cursor's position
      * @param {Object}  position  The position to start searching from
-     * @param {Number}  backward  Set to true to search backward
+     * @param {Boolean} backward  Set to true to search backward
      * @param {Boolean} stop      Set to true stop looping back around to search again
      */
     function getNextField(selection, backward, stop) {
