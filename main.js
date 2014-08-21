@@ -29,6 +29,8 @@
 define(function (require, exports, module) {
     'use strict';
 
+	var AppInit            	= brackets.getModule("utils/AppInit");
+    var CodeHintManager     = brackets.getModule("editor/CodeHintManager");
     var CommandManager      = brackets.getModule('command/CommandManager');
     var KeyEvent            = brackets.getModule('utils/KeyEvent');
     var EditorManager       = brackets.getModule('editor/EditorManager');
@@ -206,7 +208,9 @@ define(function (require, exports, module) {
             var nextField = getNextField(selection, backward);
 
             if (nextField) {
-                editor.setSelection(nextField[0], nextField[1]);
+                editor.setSelection(nextField[1], nextField[0]); // set the selection
+				editor.document.replaceRange(editor.getSelectedText(), nextField[1] , nextField[0]); // replace it with itself to get CodeHints
+				editor.setSelection(nextField[1], nextField[0]); //  set the selection again
                 event.preventDefault();
             }
         }
@@ -334,7 +338,7 @@ define(function (require, exports, module) {
                 var endPosition = {
                     line : lineNumber,
                     ch   : index + match[1].length + start_offset
-                };
+				};
 
                 field = backward ? [endPosition, startPosition] : [startPosition, endPosition];
                 break;
@@ -364,22 +368,29 @@ define(function (require, exports, module) {
     // Initialization
     // =========================================================================
 
-
-    /**
+	/**
     * Add/Remove listeners when the editor changes
     * @param {object} event     Event object
     * @param {editor} newEditor Brackets editor
     * @param {editor} oldEditor Brackets editor
-    */
+	*/
     function updateEditorListeners(event, newEditor, oldEditor) {
         $(oldEditor).off('keyEvent', handleTab);
         $(newEditor).on('keyEvent', handleTab);
     }
 
-    CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
-    KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Alt-D');
-    KeyBindingManager.addBinding(COMMAND_ID, 'Cmd-Shift-D', 'mac');
 
-    $(EditorManager).on('activeEditorChange', updateEditorListeners);
-    $(EditorManager.getCurrentFullEditor()).on('keyEvent', handleTab);
+	AppInit.appReady(function () {
+		require('hints');
+
+		CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
+		KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Alt-D');
+		KeyBindingManager.addBinding(COMMAND_ID, 'Cmd-Shift-D', 'mac');
+
+		$(EditorManager).on('activeEditorChange', updateEditorListeners);
+		$(EditorManager.getCurrentFullEditor()).on('keyEvent', handleTab);
+
+		var docrHints = new DocrHint();
+		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
+	});
 });
