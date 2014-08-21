@@ -29,17 +29,23 @@
 define(function (require, exports, module) {
     'use strict';
 
-    var CommandManager    = brackets.getModule('command/CommandManager');
-    var KeyEvent          = brackets.getModule('utils/KeyEvent');
-    var EditorManager     = brackets.getModule('editor/EditorManager');
-    var KeyBindingManager = brackets.getModule('command/KeyBindingManager');
-    var Menus             = brackets.getModule('command/Menus');
+    var CommandManager      = brackets.getModule('command/CommandManager');
+    var KeyEvent            = brackets.getModule('utils/KeyEvent');
+    var EditorManager       = brackets.getModule('editor/EditorManager');
+    var KeyBindingManager   = brackets.getModule('command/KeyBindingManager');
+    var Menus               = brackets.getModule('command/Menus');
 
-    var COMMAND_ID         = 'funcdocr';
-    var COMMAND_ID_TAB     = 'funcdocrTab';
-    var FUNCTION_REGEXP    = /function(\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{/;
-    var INDENTATION_REGEXP = /^([\t\ ]*)/;
-    var LINE_COUNT         = 0;
+    var COMMAND_ID          = 'funcdocr';
+    var COMMAND_ID_TAB      = 'funcdocrTab';
+    var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{/;
+    var INDENTATION_REGEXP  = /^([\t\ ]*)/;
+
+    var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
+    var DOCBLOCK_START      = /^\s*\/\*\*/;
+    var DOCBLOCK_MIDDLE     = /^\s* \*/;
+    var DOCBLOCK_END        = /^\s* \*\//;
+    var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
+    var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
 
     var PARAM_WRAPPERS = {
         'javascript'   : ['{', '}'],
@@ -49,48 +55,57 @@ define(function (require, exports, module) {
     };
 
 
-    /**
-     * get the current function including .indentation,.type (for prototype),.params,.line
-     */
-    function getFunction() {
-        var results = {};
-        var editor  = EditorManager.getCurrentFullEditor();
-        var pos     = editor.getCursorPos();
-        var line    = editor.document.getRange(
-            {
-                line : pos.line,
-                ch  : 0
-            },
-            {
-                line : pos.line + 1,
-                ch   : 0
-            }
-        );
+    // =========================================================================
+    // Doc Block Generation
+    // =========================================================================
 
-        var matches = FUNCTION_REGEXP.exec(line);
+
+    /**
+     * Handle the shortcut to create a doc block
+     */
+    function handleDocBlock() {
+        insertDocBlock(generateDocBlock(getFunctionSignature()));
+    }
+
+
+    /**
+     * Get the signature of the currently selected function
+     */
+    function getFunctionSignature() {
+        var editor      = EditorManager.getCurrentFullEditor();
+        var position    = editor.getCursorPos();
+        var document    = editor.document;
+        var currentLine = document.getLine(position.line);
+        var matches     = FUNCTION_REGEXP.exec(currentLine);
+        var signature   = {};
 
         if (!matches) {
             return null;
         }
 
-        results.indentation = INDENTATION_REGEXP.exec(line)[0];
-        results.parameters  = [];
+        signature.indentation = INDENTATION_REGEXP.exec(currentLine)[0];
+        signature.parameters  = [];
 
-        var parameters = matches[2].split(',');
+        var parameters = matches[1].split(',');
 
         for (var i = 0; i < parameters.length; ++i) {
             var name = parameters[i].trim();
 
             if (name) {
-                results.parameters.push(name);
+                signature.parameters.push(name);
             }
         }
 
-        return results;
+        return signature;
     }
 
-    function generateDocs(func) {
-        if (!func) {
+
+    /**
+     * Generates the doc block for a function
+     * @param {Object} func The result of getFunctionSignature()
+     */
+    function generateDocBlock(signature) {
+        if (!signature) {
             return null;
         }
 
@@ -110,84 +125,88 @@ define(function (require, exports, module) {
 
         // Determine the longest parameter so we can right-pad them
         var maxLength = 0;
-        for (var i = 0; i < func.parameters.length; i++) {
-            var parameter = func.parameters[i];
+        for (var i = 0; i < signature.parameters.length; i++) {
+            var parameter = signature.parameters[i];
 
-            if(parameter.length > maxLength) {
+            if (parameter.length > maxLength) {
                 maxLength = parameter.length;
             }
         }
 
         // Add the parameter lines
-        for (var i = 0; i < func.parameters.length; i++) {
-            var parameter = func.parameters[i];
+        for (var i = 0; i < signature.parameters.length; i++) {
+            var parameter = signature.parameters[i];
 
             // Right pad the parameter
-            parameter = (parameter + new Array(maxLength).join(' ')).substr(0, maxLength);
+            parameter = (parameter + new Array(maxLength + 1).join(' ')).substr(0, maxLength);
 
             output.push(' * @param ' + wrapper[0] + '[[Type]]' + wrapper[1] + ' ' + parameter + ' [[Description]]');
         }
 
         // @TODO Make this actually work
         // Add the return line
-        if (func.return) {
+        if (signature.returns) {
             output.push(' * @returns ' + wrapper[0] + '[[Type]]' + wrapper[1] + ' [[Description]]')
         }
 
         output.push(' */');
 
-        return func.indentation + output.join('\n' + func.indentation) + '\n';
+        return signature.indentation + output.join('\n' + signature.indentation) + '\n';
     }
 
 
     /**
-     * Insert the documents and select the first
-     * @param {object} docs docs.docs,.cursorPosStart,.cursorPosEnd
+     * Inserts a doc block above the current line
+     * @param {String} docs Doc blocc
      */
-    function insertDocs(docs) {
-        if (!docs) {
+    function insertDocBlock(docBlock) {
+        if (!docBlock) {
             return;
         }
 
-        var editor = EditorManager.getCurrentFullEditor();
-        var pos    = editor.getCursorPos();
-        pos.ch     = 0;
+        var editor   = EditorManager.getCurrentFullEditor();
+        var position = editor.getCursorPos();
+        position.ch  = 0;
 
-        editor._codeMirror.replaceRange(docs, pos);
+        editor._codeMirror.replaceRange(docBlock, position);
 
         // Start at the first line, just before [[Description]]
-        var lines     = docs.split('\n');
-        var startPos  = editor.getCursorPos();
-        startPos.line -= lines.length - 2;
-        startPos.ch   = lines[0].length;
+        var lines           = docBlock.split('\n');
+        var startPosition   = editor.getCursorPos();
+        startPosition.line -= lines.length - 2;
+        startPosition.ch    = lines[0].length;
 
         // End just after [[Description]]
-        var endPos = Object.create(startPos);
-        endPos.ch += '[[Description]]'.length;
+        var endPosition  = Object.create(startPosition);
+        endPosition.ch  += '[[Description]]'.length;
 
         // Set the selection
-        editor.setSelection(startPos, endPos);
+        editor.setSelection(startPosition, endPosition);
 
         EditorManager.focusEditor();
     }
 
 
+    // =========================================================================
+    // Tab Handling
+    // =========================================================================
+
+
     /**
-     * Check for Tab key
-     * If it is inside a JS/PHPDoc comment jump to the next [[tag]]
-     * @param {object} jqEvent
+     * Handle the tab key when within a doc block
+     * @param {object} event  jQuery event object
      * @param {editor} editor Brackets editor
-     * @param {object} event key event object
+     * @param {object} event  Event object
      */
-    function handleTab(jqEvent, editor, event) {
-        if ((event.type === 'keydown') && (event.keyCode === KeyEvent.DOM_VK_TAB)) {
-            var pos    = editor.getCursorPos();
+    function handleTab($event, editor, event) {
+        if (event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) {
+            var editor    = EditorManager.getCurrentFullEditor();
+            var selection = editor.getSelection();
+            var backward  = event.shiftKey;
+            var nextField = getNextField(selection, backward);
 
-            var nextPosRange = getNextTabPos(editor,pos);
-            if (nextPosRange !== false) {
-                console.log(nextPosRange);
-                editor.setSelection(nextPosRange[0], nextPosRange[1]);
-
+            if (nextField) {
+                editor.setSelection(nextField[0], nextField[1]);
                 event.preventDefault();
             }
         }
@@ -195,84 +214,172 @@ define(function (require, exports, module) {
 
 
     /**
-     * Get the next Tab position
-     * @param {editor} editor Brackets editor
-     * @param {object} pos pos.ch and pos.line
+     * Gets the next tabbable field within the doc block based on the cursor's position
+     * @param {Object}  position  The position to start searching from
+     * @param {Boolean} backward  Set to true to search backward
+     * @param {Boolean} stop      Set to true stop looping back around to search again
      */
-    function getNextTabPos(editor,pos) {
-        console.log(editor.document);
-        console.log(pos);
-        var docs = editor.document.getRange(pos,{line:LINE_COUNT,ch:0});
-        docs = docs.substr(0,docs.indexOf('*/')+2);
-        console.log(docs);
+    function getNextField(selection, backward, stop) {
+        var editor    = EditorManager.getCurrentFullEditor();
+        var document  = editor.document;
+        var lineCount = editor.lineCount();
 
-        // shrinkText
-        var commentRegEx = /^(?![\s\S]*\/\*\*)([\s\S]*?)\*\//;
-        var matches = commentRegEx.exec(docs);
-        if (!matches) return false;
-        docs = matches[1];
+        // Determine the cursor position based on the selection
+        var position;
 
-        // get the next [[
-        var nextPosExec = /\[\[(.*?)\]\]/.exec(docs);
-        if (nextPosExec === null) return false;
+        if (selection.start.line !== selection.end.line) {
+            position = selection.start.line > selection.end.line ? selection.start : selection.end;
+        }
+        else {
+            position = selection.start.ch > selection.end.ch ? selection.start : selection.end;
+        }
 
-        console.log(nextPosExec);
-        var nextPos = nextPosExec.index;
+        // Reverse the position if we're moving backward
+        if (backward) {
+            position = position === selection.start ? selection.end : selection.start;
+        }
 
-        // get line and ch
-        var currentPos = 0;
-        var nextPosLine = 0;
-        var nextPosCh = 0;
-        var lines = docs.split(/\n/);
-        while (true) {
-            var currentLineLength = lines[nextPosLine].length+1; // +1 for \n
-            var newCurrentPos = currentPos + currentLineLength;
-            if (nextPos <= newCurrentPos) {
-                nextPosCh = nextPos-currentPos;
+        // Snap to the word boundary
+        var currentLine = document.getLine(position.line);
+
+        while (currentLine.charAt(position.ch).match(DOCBLOCK_BOUNDARY)) {
+            position.ch -= 1;
+
+            if(position.ch < 0) {
+                position.ch = 0;
                 break;
             }
-            nextPosLine++;
-            currentPos = newCurrentPos;
+            else if(position.ch >= currentLine.length) {
+                position.ch = currentLine.length - 1;
+                break;
+            }
         }
-        if (nextPosLine == 0) nextPosCh += pos.ch;
-        return [{line: pos.line+nextPosLine, ch: nextPosCh},{line: pos.line+nextPosLine, ch:nextPosCh+nextPosExec[0].length}];
+
+        // Search for the start of the doc block
+        var start = null;
+
+        for (var i = position.line; i >= 0; --i) {
+            var line = document.getLine(i);
+
+            // Check for the start of the doc block
+            if (line.match(DOCBLOCK_START)) {
+                start = i;
+                break;
+            }
+
+            // Make sure we're still in a doc block
+            if (!line.match(DOCBLOCK_MIDDLE) && !line.match(DOCBLOCK_END)) {
+                break;
+            }
+        }
+
+        // If no start was found, we're not in a doc block
+        if (start === null) {
+            return null;
+        }
+
+        // Search for the end of the doc block
+        var end = null;
+
+        for (var i = position.line; i < lineCount; ++i) {
+            var line = document.getLine(i);
+
+            // Check for the end of the doc block
+            if (line.match(DOCBLOCK_END)) {
+                end = i;
+                break;
+            }
+
+            // Make sure we're still in a doc block
+            if (!line.match(DOCBLOCK_START) && !line.match(DOCBLOCK_MIDDLE)) {
+                break;
+            }
+        }
+
+        // If no end was found, we're not in a doc block
+        if (end === null) {
+            return null;
+        }
+
+        // Search for the next field
+        var limit     = backward ? position.line - start : end - position.line;
+        var direction = backward ? -1 : 1;
+        var field     = null;
+
+        for (var i = 0; i < limit; ++i) {
+            var lineNumber   = position.line + (i * direction);
+            var line         = document.getLine(lineNumber);
+            var start_offset = 0;
+            var end_offset   = line.length;
+
+            // If we're testing the cursor's line, we need to ignore text in front/behind based on the direction
+            if (lineNumber === position.line) {
+                start_offset = backward ? 0 : position.ch;
+                end_offset   = backward ? position.ch : undefined;
+            }
+
+            // Find the field using regexp
+            var testLine = line.substr(start_offset, end_offset);
+            var pattern  = backward ? DOCBLOCK_LAST_FIELD : DOCBLOCK_FIELD;
+            var match    = pattern.exec(testLine);
+
+            if (match) {
+                var index = backward ? testLine.lastIndexOf(match[1]) : testLine.indexOf(match[1]);
+
+                var startPosition = {
+                    line : lineNumber,
+                    ch   : index + start_offset
+                };
+
+                var endPosition = {
+                    line : lineNumber,
+                    ch   : index + match[1].length + start_offset
+                };
+
+                field = backward ? [endPosition, startPosition] : [startPosition, endPosition];
+                break;
+            }
+        }
+
+        // If no field was found, loop back around
+        if (field === null && !stop) {
+            var loopPosition = {
+                line : backward ? end : start,
+                ch   : 0
+            }
+
+            var loopSelection = {
+                start : loopPosition,
+                end   : loopPosition
+            };
+
+            return getNextField(loopSelection, backward, true);
+        }
+
+        return field;
     }
+
+
+    // =========================================================================
+    // Initialization
+    // =========================================================================
 
 
     /**
-     * Insert the documentation if a function exists
-     */
-    function handleDocumentation() {
-        insertDocs(generateDocs(getFunction()));
-    }
-
-
-	/**
-    * update the keyEvent listener and remove it from the last document
-    * @param {object} event event object
+    * Add/Remove listeners when the editor changes
+    * @param {object} event     Event object
     * @param {editor} newEditor Brackets editor
     * @param {editor} oldEditor Brackets editor
     */
-    function _updateEditorListener(event, newEditor, oldEditor) {
-        // @FIXME This is really buggy, so I disabled it for now
-        return;
-
-        if (newEditor) {
-            var lines = newEditor.document.getText().split(/\n/);
-            LINE_COUNT = lines.length;
-            $(newEditor).on('keyEvent', handleTab);
-        }
-
-        if (oldEditor) {
-            $(oldEditor).off('keyEvent', handleTab);
-        }
+    function updateEditorListeners(event, newEditor, oldEditor) {
+        $(oldEditor).off('keyEvent', handleTab);
+        $(newEditor).on('keyEvent', handleTab);
     }
 
-
-    CommandManager.register('funcdocr', COMMAND_ID, handleDocumentation);
+    CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
     KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Alt-D');
     KeyBindingManager.addBinding(COMMAND_ID, 'Cmd-Shift-D', 'mac');
 
-    $(EditorManager).on('activeEditorChange', _updateEditorListener);
+    $(EditorManager).on('activeEditorChange', updateEditorListeners);
     $(EditorManager.getCurrentFullEditor()).on('keyEvent', handleTab);
 });
