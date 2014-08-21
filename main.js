@@ -209,8 +209,7 @@ define(function (require, exports, module) {
 
             if (nextField) {
                 editor.setSelection(nextField[1], nextField[0]); // set the selection
-				editor.document.replaceRange(editor.getSelectedText(), nextField[1] , nextField[0]); // replace it with itself to get CodeHints
-				editor.setSelection(nextField[1], nextField[0]); //  set the selection again
+				CommandManager.execute(Commands.SHOW_CODE_HINTS);
                 event.preventDefault();
             }
         }
