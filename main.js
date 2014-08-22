@@ -88,10 +88,14 @@ define(function (require, exports, module) {
      */
     function getFunctionSignature() {
         var editor      = EditorManager.getCurrentFullEditor();
+		langId  		= editor.getLanguageForSelection().getId();
         var position    = editor.getCursorPos();
         var document    = editor.document;
+        var lineBefore  = document.getLine(position.line-1);
         var currentLine = document.getLine(position.line);
         var matches     = FUNCTION_REGEXP.exec(currentLine);
+        var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
+
         var signature   = {};
 
         if (!matches) {
@@ -107,22 +111,161 @@ define(function (require, exports, module) {
             var name = parameters[i].trim();
 
             if (name) {
-                signature.parameters.push(name);
+                signature.parameters.push({title:name});
             }
         }
 
+		// default
+		signature.returns = {bool: false};
+
 		// get the function code and returns (Boolean)
 		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
-		signature.returns = codeTypes.returns;
-		signature.paramTypes = codeTypes.paramTypes;
+		if (codeTypes) {
+			signature.returns = {bool:codeTypes.returns};
+			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
+				signature.parameters[i].type = codeTypes.paramTypes[i];
+			}
+		}
+
+
+		if (docExists) { // try to update the doc block (parameter added or deleted)
+			var doc = getExistingDocSignature(document,position);
+			var docStartLine = doc.startLine;
+			var docSignature = doc.signature;
+
+			// merge the docSignature into signature
+			if (docSignature.description != '') {
+				signature.description = docSignature.description;
+			}
+			var parameterTitles = [];
+			signature.parameters.forEach(function(o){parameterTitles.push(o.title);} );
+
+			for (var i = 0; i < docSignature.parameters.length; i++) {
+				var paramIndex;
+				if ((paramIndex = parameterTitles.indexOf(docSignature.parameters[i].title)) >= 0) {
+					signature.parameters[paramIndex] = docSignature.parameters[i];
+				}
+			}
+			if (signature.returns.bool) {
+				signature.returns = docSignature.returns ? docSignature.returns : {};
+				signature.returns.bool = true;
+			}
+			editor._codeMirror.replaceRange('', {ch: 0, line: docStartLine}, {ch: 0, line: position.line});
+		}
 
         return signature;
     }
 
+	/**
+	 * Get the existing doc tags
+	 * @param {document} document brackets document
+	 * @param {Object} position current cursor position
+	 * @returns {Object} get startLine of the doc and the tags (.signature)
+	 */
+	function getExistingDocSignature(document,position) {
+		// get start line of documentation
+		var i = 1;
+		var currentLine = document.getLine(position.line-i);
+		var docLines = [];
+		while (!DOCBLOCK_START.test(currentLine)) {
+			docLines.push(currentLine);
+			i++;
+			currentLine = document.getLine(position.line-i);
+		}
+		docLines.reverse();
+		return {startLine: position.line-i, signature: getCurrentDocTags(docLines)};
+	}
+
+	/**
+	 * Get all tags that are set in the existing doc block
+	 * @param {Array} lines doc block lines
+	 * @returns {Object} tags .descriptions,.params,.returns
+	 */
+	function getCurrentDocTags(lines) {
+		var tags = {};
+
+		// trim lines
+		for (var i = 0; i < lines.length; i++) {
+			lines[i] = lines[i].trim(); // trim each line
+			if (lines[i].substr(0,2) == "*/") { lines = lines.slice(0,i); break; }
+			lines[i] = lines[i].replace(/^\*/,'').trim(); // delete * at the beginning and trim line again
+		}
+
+		var commentTags = lines.join('\n').split('@');
+
+		tags.description = commentTags[0].replace(/\n*$/,''); // the first (without @ is the description/summary)
+
+		var params = [];
+		for (var i = 1; i < commentTags.length; i++) {
+			// get params
+			if (commentTags[i].substr(0,5) === 'param') {
+				var param_parts = commentTags[i].split(/(\s)+/);
+
+				var param = {};
+				// get the split delimiters
+				var delimiters = param_parts.filter(function(v,i) { return ((i % 2) === 1); });
+				param_parts = param_parts.filter(function(v,i) { return ((i % 2 === 0)); });
+
+
+				// 0 = param, [1 = type], 2 = title 3- = description
+				switch(langId) {
+					case "javascript":
+					case "coffeescript":
+					case "livescript":
+						if (param_parts[1].charAt(0) != '{') {
+							param_parts.splice(1,0,false);  // add the type false
+							param.type = false;
+						} else {
+							param.type = param_parts[1].substring(1,param_parts[1].length-1); // remove { }
+						}
+					break;
+					case "php":
+						if (param_parts[1].charAt(0) == '$') {
+							param_parts.splice(1,0,false);  // add the type false
+							param.type = false;
+						} else {
+							if (param_parts[1].charAt(0) == '{') {
+								param.type = param_parts[1].substring(1,param_parts[1].length-1);
+							} else {
+								param.type = param_parts[1];
+							}
+						}
+					break;
+				}
+				param.title			= param_parts[2];
+				param.description   = param_parts[3];
+				for (var j = 4; j < param_parts.length; j++) {
+					param.description += delimiters[j-1] + param_parts[j];
+				}
+				param.description = param.description.replace(/\n*$/,'');
+				params.push(param);
+			}
+
+
+			if (commentTags[i].substr(0,6) === 'return') {
+				if (commentTags[i].substr(0,7) === 'returns') {
+					var  return_tag = commentTags[i].substr(7).trim(); // delete returns and trim
+				} else {
+					var  return_tag = commentTags[i].substr(6).trim(); // delete return and trim
+				}
+				if(return_tag.charAt(0) == '{') {
+					var endCurly = return_tag.indexOf('}');
+					tags.returns = {description: return_tag.substr(endCurly+1).trim(),type:return_tag.substring(1,endCurly)};
+				}else {
+					var firstSpace = return_tag.indexOf(' ');
+					tags.returns = {type: (firstSpace >= 0) ? return_tag.substr(0,firstSpace) : return_tag.substr(0),
+									description: return_tag.substr(firstSpace+1).trim()};
+				}
+			}
+		}
+		tags.parameters = params;
+		return tags;
+	}
 
     /**
-     * Generates the doc block for a function
-     * @param {Object} func The result of getFunctionSignature()
+     * Generate a doc block
+     * @param {Object} signature doc block elements like .description,.parameters,.returns
+     * @returns {String} the generated doc block
      */
     function generateDocBlock(signature) {
         if (!signature) {
@@ -130,7 +273,6 @@ define(function (require, exports, module) {
         }
 
         var editor  = EditorManager.getCurrentFullEditor();
-        langId  = editor.getLanguageForSelection().getId();
         var wrapper = PARAM_WRAPPERS[langId];
 
         if (!wrapper) {
@@ -138,18 +280,17 @@ define(function (require, exports, module) {
             return null;
         }
 
-        var output = [
-            '/**',
-            ' * [[Description]]'
-        ];
+        var output = ['/**'];
+		output.push("description" in signature ? ' * '+signature.description : ' * [[Description]]');
 
+		// TODO: working on it maybe using tabs
         // Determine the longest parameter so we can right-pad them
         var maxLength = 0;
         for (var i = 0; i < signature.parameters.length; i++) {
             var parameter = signature.parameters[i];
 
-            if (parameter.length > maxLength) {
-                maxLength = parameter.length;
+            if (parameter.title.length > maxLength) {
+                maxLength = parameter.title.length;
             }
         }
 
@@ -158,15 +299,17 @@ define(function (require, exports, module) {
             var parameter = signature.parameters[i];
 
             // Right pad the parameter
-            parameter = (parameter + new Array(maxLength + 1).join(' ')).substr(0, maxLength);
-			var type = signature.paramTypes[i] ? signature.paramTypes[i] : '[[Type]]';
-            output.push(' * @param ' + wrapper[0] + type + wrapper[1] + ' ' + parameter + ' [[Description]]');
+            parameter.title 		= (parameter.title + new Array(maxLength + 1).join(' ')).substr(0, maxLength);
+			parameter.type 			= parameter.type  ? parameter.type : '[[Type]]';
+			parameter.description 	= parameter.description	? parameter.description : '[[Description]]';
+            output.push(' * @param ' + wrapper[0] + parameter.type + wrapper[1] + ' ' + parameter.title + ' '+parameter.description);
         }
 
-        // @TODO Make this actually work
         // Add the return line
-        if (signature.returns) {
-            output.push(' * @returns ' + wrapper[0] + '[[Type]]' + wrapper[1] + ' [[Description]]')
+        if (signature.returns.bool) {
+			signature.returns.description = signature.returns.description ? signature.returns.description : '[[Description]]';
+			signature.returns.type = signature.returns.type ? signature.returns.type : '[[Type]]';
+            output.push(' * @returns ' + wrapper[0] + signature.returns.type + wrapper[1] + ' '+signature.returns.description);
         }
 
         output.push(' */');
@@ -175,9 +318,10 @@ define(function (require, exports, module) {
     }
 
 
+
     /**
-     * Inserts a doc block above the current line
-     * @param {String} docs Doc blocc
+     * Insert the docBlock
+     * @param {String} docBlock the generated doc block
      */
     function insertDocBlock(docBlock) {
         if (!docBlock) {
@@ -192,16 +336,16 @@ define(function (require, exports, module) {
 
         // Start at the first line, just before [[Description]]
         var lines           = docBlock.split('\n');
-        var startPosition   = editor.getCursorPos();
-        startPosition.line -= lines.length - 2;
+		var startPosition   = editor.getCursorPos();
+		startPosition.line -= lines.length - 2;
         startPosition.ch    = lines[0].length;
 
-        // End just after [[Description]]
-        var endPosition  = Object.create(startPosition);
-        endPosition.ch  += '[[Description]]'.length;
+		// jump to te first [[Tag]]
+		var nextField = getNextField({start:startPosition,end:startPosition},false);
 
-        // Set the selection
-        editor.setSelection(startPosition, endPosition);
+        if (nextField) {
+             editor.setSelection(nextField[1], nextField[0]); // set the selection
+		}
 
         EditorManager.focusEditor();
     }
@@ -237,7 +381,7 @@ define(function (require, exports, module) {
     /**
      * Gets the next tabbable field within the doc block based on the cursor's position
      * @param {Object}  position  The position to start searching from
-     * @param {Boolean}  backward  Set to true to search backward
+     * @param {Boolean} backward  Set to true to search backward
      * @param {Boolean} stop      Set to true stop looping back around to search again
      */
     function getNextField(selection, backward, stop) {
@@ -397,7 +541,7 @@ define(function (require, exports, module) {
     }
 
 	// =========================================================================
-    // Function Code
+    // Analyze Function Code
     // =========================================================================
 
 	/**
@@ -405,7 +549,7 @@ define(function (require, exports, module) {
 	 * Try to guess the parameter types
 	 * @param {Object} editor   Brackets editor
 	 * @param {Object} position current position (.ch,.line)
-	 * @param {Array} params   function parameters
+	 * @param {Object} params   function parameters
 	 * @returns {Object} .code = code of function, .returns (Boolean) true if function returns, .paramTypes (Array) Type of parameter
 	 */
 	function getFunctionCodeTypes(editor,position,params) {
@@ -417,7 +561,7 @@ define(function (require, exports, module) {
 		var paramsFirstChars = [];
 
 		for (var i = 0; i < params.length; i++) {
-			paramsFirstChars.push(params[i].charAt(0));
+			paramsFirstChars.push(params[i].title.charAt(0));
 		}
 
 		var paramIndex;
@@ -431,8 +575,8 @@ define(function (require, exports, module) {
 				if (delimiter == '') {
 					while (paramIndex >= 0) { // parameters can start with the same char
 						// check for currentParameter.
-						if (code.substr(i,params[paramIndex].length+1) == params[paramIndex]+'.') {
-							var functionAfterParam = /^([a-z]*)(\()?/i.exec(code.substr(i+params[paramIndex].length+1));
+						if (code.substr(i,params[paramIndex].title.length+1) == params[paramIndex].title+'.') {
+							var functionAfterParam = /^([a-z]*)(\()?/i.exec(code.substr(i+params[paramIndex].title.length+1));
 							// check for properties
 							if (!functionAfterParam[2]) {
 								if (PROPERTIES.indexOf(functionAfterParam[1]) === -1) {
@@ -458,7 +602,7 @@ define(function (require, exports, module) {
 
 			switch (char) {
 				case 'r':
-					if (delimiter == "" && code.substr(i,6) == "return") returnStatement = true;
+					if (delimiter == "" && code.substr(i,6) == "return" && code.charAt(i+6) != ";") returnStatement = true;
 					break;
 
 				case '"':
@@ -474,7 +618,8 @@ define(function (require, exports, module) {
 						var lookahead = code.charAt(++i);
 						switch (lookahead) {
 							case '/': // comment
-								i = code.indexOf('\n',i);
+								var endComment = code.regexIndexOf(/\n/,i);
+								i = endComment > i ? endComment+2 : i;
 								break;
 							case '*': // start of comment (/*)
 								var endComment = code.regexIndexOf(/\*\//,i);
@@ -516,8 +661,8 @@ define(function (require, exports, module) {
 					}
 			} // switch
     	} // for
+		return false;
 	}
-
 
 
 	String.prototype.regexIndexOf = function(regex, startpos) {

@@ -14,7 +14,7 @@ The extension will provide a function documentation:
  * [[Description]]
  * @param {[[Type]]} stuff [[Description]]
  */
-function cool(stuff)
+function cool(stuff) {
 ```
 `[[Description]]` will be selected so you can start to type. To jump to the next `[[tag]]` you can use `Tab` or jump to the last with `Shift-Tab`.
 
@@ -24,9 +24,10 @@ You will get hints for the `[[Type]]` tag.
 
 Have fun and stay tuned!
 
+## v0.3.0
++ It's possible to update a doc block if you add a parameter or delete one (you need to use the shortcut again)
+
 ## v0.2.0
 + You get the tag `@returns` if the function returns a value
 + The `[[Type]]` is recognized if possible.
 
-## Next
-* check if the function already has JS/PHPDocs
