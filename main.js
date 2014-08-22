@@ -32,6 +32,7 @@ define(function (require, exports, module) {
 	var AppInit            	= brackets.getModule("utils/AppInit");
     var CodeHintManager     = brackets.getModule("editor/CodeHintManager");
     var CommandManager      = brackets.getModule('command/CommandManager');
+	var Commands            = brackets.getModule("command/Commands");
     var KeyEvent            = brackets.getModule('utils/KeyEvent');
     var EditorManager       = brackets.getModule('editor/EditorManager');
     var KeyBindingManager   = brackets.getModule('command/KeyBindingManager');
@@ -49,6 +50,17 @@ define(function (require, exports, module) {
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
 
+	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
+	var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
+							   'localeCompare', 'match', 'normalize', 'repeat', 'replace', 'search',
+							   'split', 'startsWith', 'substr', 'substring', 'toLocaleLowerCase',
+							   'toLocaleUpperCase', 'toLowerCase', 'toUpperCase', 'trim', 'valueOf'];
+	var ARRAY_FUNCTIONS		= ['fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift', 'join'];
+	var OBJECT_FUNCTIONS 	= ['create', 'defineProperty', 'defineProperties', 'freeze', 'getOwnPropertyDescriptor',
+							   'getOwnPropertyNames', 'getOwnPropertySymbols', 'getPrototypeOf', 'isExtensible',
+							   'isFrozen', 'isSealed', 'keys', 'preventExtensions', 'seal', 'setPrototypeOf'];
+	var REGEXP_FUNCTIONS 	= ['exec','test'];
+
     var PARAM_WRAPPERS = {
         'javascript'   : ['{', '}'],
         'coffeescript' : ['{', '}'],
@@ -56,6 +68,7 @@ define(function (require, exports, module) {
         'php'          : ['', '']
     };
 
+	var langId;
 
     // =========================================================================
     // Doc Block Generation
@@ -98,6 +111,11 @@ define(function (require, exports, module) {
             }
         }
 
+		// get the function code and returns (Boolean)
+		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
+		signature.returns = codeTypes.returns;
+		signature.paramTypes = codeTypes.paramTypes;
+
         return signature;
     }
 
@@ -112,7 +130,7 @@ define(function (require, exports, module) {
         }
 
         var editor  = EditorManager.getCurrentFullEditor();
-        var langId  = editor.getLanguageForSelection().getId();
+        langId  = editor.getLanguageForSelection().getId();
         var wrapper = PARAM_WRAPPERS[langId];
 
         if (!wrapper) {
@@ -141,8 +159,8 @@ define(function (require, exports, module) {
 
             // Right pad the parameter
             parameter = (parameter + new Array(maxLength + 1).join(' ')).substr(0, maxLength);
-
-            output.push(' * @param ' + wrapper[0] + '[[Type]]' + wrapper[1] + ' ' + parameter + ' [[Description]]');
+			var type = signature.paramTypes[i] ? signature.paramTypes[i] : '[[Type]]';
+            output.push(' * @param ' + wrapper[0] + type + wrapper[1] + ' ' + parameter + ' [[Description]]');
         }
 
         // @TODO Make this actually work
@@ -219,7 +237,7 @@ define(function (require, exports, module) {
     /**
      * Gets the next tabbable field within the doc block based on the cursor's position
      * @param {Object}  position  The position to start searching from
-     * @param {Boolean} backward  Set to true to search backward
+     * @param {Boolean}  backward  Set to true to search backward
      * @param {Boolean} stop      Set to true stop looping back around to search again
      */
     function getNextField(selection, backward, stop) {
@@ -378,6 +396,134 @@ define(function (require, exports, module) {
         $(newEditor).on('keyEvent', handleTab);
     }
 
+	// =========================================================================
+    // Function Code
+    // =========================================================================
+
+	/**
+	 * Get the code of a function at positon and check if the function returns a value
+	 * Try to guess the parameter types
+	 * @param {Object} editor   Brackets editor
+	 * @param {Object} position current position (.ch,.line)
+	 * @param {Array} params   function parameters
+	 * @returns {Object} .code = code of function, .returns (Boolean) true if function returns, .paramTypes (Array) Type of parameter
+	 */
+	function getFunctionCodeTypes(editor,position,params) {
+		var code = editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
+		var length = code.length;
+		var delimiter = '';
+		var bracketCount = 0;
+		var returnStatement = false;
+		var paramsFirstChars = [];
+
+		for (var i = 0; i < params.length; i++) {
+			paramsFirstChars.push(params[i].charAt(0));
+		}
+
+		var paramIndex;
+		var paramTypes = [];
+
+		for (var i = 0; i < length; i++) {
+			var char = code.charAt(i);
+
+			// get code types
+			if (langId != "php" && ((paramIndex = paramsFirstChars.indexOf(char)) >= 0)) {
+				if (delimiter == '') {
+					while (paramIndex >= 0) { // parameters can start with the same char
+						// check for currentParameter.
+						if (code.substr(i,params[paramIndex].length+1) == params[paramIndex]+'.') {
+							var functionAfterParam = /^([a-z]*)(\()?/i.exec(code.substr(i+params[paramIndex].length+1));
+							// check for properties
+							if (!functionAfterParam[2]) {
+								if (PROPERTIES.indexOf(functionAfterParam[1]) === -1) {
+									paramTypes[paramIndex] = 'Object';
+								}
+							} else { // check for functions
+								if (STRING_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
+									paramTypes[paramIndex] = 'String';
+								} else if (ARRAY_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
+									paramTypes[paramIndex] = 'Array';
+								} else if (OBJECT_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
+									paramTypes[paramIndex] = 'Object';
+								} else if (REGEXP_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
+									paramTypes[paramIndex] = 'RegExp';
+								}
+							}
+						}
+						paramIndex = paramsFirstChars.indexOf(char,paramIndex+1); // next parameter with the correct first char
+					}
+				}
+			}
+
+
+			switch (char) {
+				case 'r':
+					if (delimiter == "" && code.substr(i,6) == "return") returnStatement = true;
+					break;
+
+				case '"':
+				case "'":
+					if (delimiter) {
+						if (char === delimiter) // closing ' or "
+							delimiter = '';
+					}
+					else delimiter = char; // starting ' or "
+					break;
+				case '/':
+					if (delimiter == '') {
+						var lookahead = code.charAt(++i);
+						switch (lookahead) {
+							case '/': // comment
+								i = code.indexOf('\n',i);
+								break;
+							case '*': // start of comment (/*)
+								var endComment = code.regexIndexOf(/\*\//,i);
+								i = endComment > i ? endComment+2 : i;
+								break;
+							default:
+								// check for regular expression
+								if (/[-+*%!=(;?,<>~]\s*$/.test(code.substring(0,i-1))) { // i-1 because ++i for lookahead
+									var endRegex = /[^\\](?:[\\]{2})*\//;
+									var endRegexMatch = endRegex.exec(code.substring(i,code.indexOf('\n',i)));
+									i += endRegex ? endRegexMatch.index+endRegexMatch[0].length : 0;
+								}
+						}
+					}
+					break;
+				case '\\':
+					switch (delimiter) {
+					case '"':
+					case "'":
+					case "\\":
+						i++;
+					}
+					break;
+				case '{':
+					if (!delimiter) {
+						bracketCount++;
+					}
+					break;
+				case '}':
+					if (!delimiter) {
+						bracketCount--;
+						if (bracketCount === 0) {
+							return {
+								code:code.substr(0,i+1),
+								returns: returnStatement,
+								paramTypes: paramTypes
+							}
+						}
+					}
+			} // switch
+    	} // for
+	}
+
+
+
+	String.prototype.regexIndexOf = function(regex, startpos) {
+		var indexOf = this.substring(startpos || 0).search(regex);
+		return (indexOf >= 0) ? (indexOf + (startpos || 0)) : indexOf;
+	}
 
 	AppInit.appReady(function () {
 		require('hints');

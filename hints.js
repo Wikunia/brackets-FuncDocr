@@ -38,7 +38,8 @@ DocrHint.prototype.getHints = function (implicitChar) {
 				"String",
 				"Boolean",
 				"Array",
-				"Object"
+				"Object",
+				"RegExp"
 			];
 	}
 

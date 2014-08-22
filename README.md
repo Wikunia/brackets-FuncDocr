@@ -22,18 +22,11 @@ You will get hints for the `[[Type]]` tag.
 
 ![Type hints](https://cloud.githubusercontent.com/assets/4931746/3998983/b3eba9ba-294c-11e4-988b-4330735635fd.png)
 
-
-
 Have fun and stay tuned!
 
-
-
+## v0.2.0
++ You get the tag `@returns` if the function returns a value
++ The `[[Type]]` is recognized if possible.
 
 ## Next
 * check if the function already has JS/PHPDocs
-* add `@return` 
-* try to guess the `[[Type]]` values
-
-
-
-
