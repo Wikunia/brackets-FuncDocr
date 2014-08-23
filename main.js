@@ -45,8 +45,8 @@ define(function (require, exports, module) {
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
     var DOCBLOCK_START      = /^\s*\/\*\*/;
-    var DOCBLOCK_MIDDLE     = /^\s* \*/;
-    var DOCBLOCK_END        = /^\s* \*\//;
+    var DOCBLOCK_MIDDLE     = /^\s*\*/;
+    var DOCBLOCK_END        = /^\s*\*\//;
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
 
@@ -82,9 +82,9 @@ define(function (require, exports, module) {
         insertDocBlock(generateDocBlock(getFunctionSignature()));
     }
 
-
     /**
      * Get the signature of the currently selected function
+     * @returns {Object} [.description],[.parameter],[.returns]
      */
     function getFunctionSignature() {
         var editor      = EditorManager.getCurrentFullEditor();
@@ -158,9 +158,9 @@ define(function (require, exports, module) {
 
 	/**
 	 * Get the existing doc tags
-	 * @param {document} document brackets document
-	 * @param {Object} position current cursor position
-	 * @returns {Object} get startLine of the doc and the tags (.signature)
+	 * @param   {document} document brackets document
+	 * @param   {Object}   position current cursor position
+	 * @returns {Object}   get startLine of the doc and the tags (.signature)
 	 */
 	function getExistingDocSignature(document,position) {
 		// get start line of documentation
@@ -178,7 +178,7 @@ define(function (require, exports, module) {
 
 	/**
 	 * Get all tags that are set in the existing doc block
-	 * @param {Array} lines doc block lines
+	 * @param   {Array}  lines doc block lines
 	 * @returns {Object} tags .descriptions,.params,.returns
 	 */
 	function getCurrentDocTags(lines) {
@@ -263,9 +263,9 @@ define(function (require, exports, module) {
 	}
 
     /**
-     * Generate a doc block
-     * @param {Object} signature doc block elements like .description,.parameters,.returns
-     * @returns {String} the generated doc block
+     * Generate the doc block for a function signature
+     * @param   {Object} signature .description,.parameter,.returns
+     * @returns {String} the doc block with the correct indentation
      */
     function generateDocBlock(signature) {
         if (!signature) {
@@ -281,35 +281,59 @@ define(function (require, exports, module) {
         }
 
         var output = ['/**'];
-		output.push("description" in signature ? ' * '+signature.description : ' * [[Description]]');
 
-		// TODO: working on it maybe using tabs
-        // Determine the longest parameter so we can right-pad them
-        var maxLength = 0;
+		// add description
+		signature.description = "description" in signature ? signature.description.split(/\n/) : ['[[Description]]'];
+		output.push(' * '+signature.description[0]);
+		for (var d = 1; d < signature.description.length; d++) {
+			output.push(' * '+signature.description[d]);
+			d++;
+		}
+
+
+        // Determine the longest parameter and the longest type so we can right-pad them
+        var maxParamLength = 0;
+        var maxTypeLength = 0;
         for (var i = 0; i < signature.parameters.length; i++) {
             var parameter = signature.parameters[i];
+			parameter.type 			= parameter.type  ? parameter.type : '[[Type]]';
 
-            if (parameter.title.length > maxLength) {
-                maxLength = parameter.title.length;
+            if (parameter.title.length > maxParamLength) {
+                maxParamLength = parameter.title.length;
+            }
+			if (parameter.type.length > maxTypeLength) {
+                maxTypeLength = parameter.type.length;
             }
         }
+		if (signature.returns.bool) {
+			signature.returns.type 	= signature.returns.type ? signature.returns.type : '[[Type]]';
+			maxTypeLength 			= signature.returns.type.length > maxTypeLength ? signature.returns.type.length : maxTypeLength;
+		}
+
+
+
+		// if returns is set show align the types of params and returns
+		var tagRightSpace = signature.returns.bool ? '   ' : ' ';
 
         // Add the parameter lines
         for (var i = 0; i < signature.parameters.length; i++) {
             var parameter = signature.parameters[i];
 
-            // Right pad the parameter
-            parameter.title 		= (parameter.title + new Array(maxLength + 1).join(' ')).substr(0, maxLength);
-			parameter.type 			= parameter.type  ? parameter.type : '[[Type]]';
+            // get the right spaces for title and type
+            parameter.titleRightSpace		= new Array(maxParamLength + 2 - parameter.title.length).join(' ');
+            parameter.typeRightSpace 		= new Array(maxTypeLength + 2 - parameter.type.length).join(' ');
+
 			parameter.description 	= parameter.description	? parameter.description : '[[Description]]';
-            output.push(' * @param ' + wrapper[0] + parameter.type + wrapper[1] + ' ' + parameter.title + ' '+parameter.description);
+            output.push(' * @param'+ tagRightSpace + wrapper[0] + parameter.type + wrapper[1] +
+						parameter.typeRightSpace + parameter.title + parameter.titleRightSpace +parameter.description);
         }
 
         // Add the return line
         if (signature.returns.bool) {
-			signature.returns.description = signature.returns.description ? signature.returns.description : '[[Description]]';
-			signature.returns.type = signature.returns.type ? signature.returns.type : '[[Type]]';
-            output.push(' * @returns ' + wrapper[0] + signature.returns.type + wrapper[1] + ' '+signature.returns.description);
+			signature.returns.description 			= signature.returns.description ? signature.returns.description : '[[Description]]';
+			signature.returns.typeRightSpace 		= new Array(maxTypeLength + 2 - signature.returns.type.length).join(' ');
+            output.push(' * @returns ' + wrapper[0] + signature.returns.type + wrapper[1] +
+						signature.returns.typeRightSpace + signature.returns.description);
         }
 
         output.push(' */');
@@ -380,9 +404,10 @@ define(function (require, exports, module) {
 
     /**
      * Gets the next tabbable field within the doc block based on the cursor's position
-     * @param {Object}  position  The position to start searching from
-     * @param {Boolean} backward  Set to true to search backward
-     * @param {Boolean} stop      Set to true stop looping back around to search again
+     * @param   {Object}  selection selected Text psoition {start<.ch,.line>,end<.ch,.line>
+     * @param   {Boolean} backward  Set to true to search backward
+     * @param   {Boolean} stop      Set to true stop looping back around to search again
+     * @returns {array}   start position,end position (.ch,.line)
      */
     function getNextField(selection, backward, stop) {
         var editor    = EditorManager.getCurrentFullEditor();
@@ -529,12 +554,12 @@ define(function (require, exports, module) {
     // Initialization
     // =========================================================================
 
-	/**
-    * Add/Remove listeners when the editor changes
-    * @param {object} event     Event object
-    * @param {editor} newEditor Brackets editor
-    * @param {editor} oldEditor Brackets editor
-	*/
+    /**
+     * Add/Remove listeners when the editor changes
+     * @param {object} event     Event object
+     * @param {editor} newEditor Brackets editor
+     * @param {editor} oldEditor Brackets editor
+     */
     function updateEditorListeners(event, newEditor, oldEditor) {
         $(oldEditor).off('keyEvent', handleTab);
         $(newEditor).on('keyEvent', handleTab);
@@ -547,9 +572,9 @@ define(function (require, exports, module) {
 	/**
 	 * Get the code of a function at positon and check if the function returns a value
 	 * Try to guess the parameter types
-	 * @param {Object} editor   Brackets editor
-	 * @param {Object} position current position (.ch,.line)
-	 * @param {Object} params   function parameters
+	 * @param   {Object} editor   Brackets editor
+	 * @param   {Object} position current position (.ch,.line)
+	 * @param   {Object} params   function parameters
 	 * @returns {Object} .code = code of function, .returns (Boolean) true if function returns, .paramTypes (Array) Type of parameter
 	 */
 	function getFunctionCodeTypes(editor,position,params) {
