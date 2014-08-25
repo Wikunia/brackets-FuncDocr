@@ -287,7 +287,6 @@ define(function (require, exports, module) {
 		output.push(' * '+signature.description[0]);
 		for (var d = 1; d < signature.description.length; d++) {
 			output.push(' * '+signature.description[d]);
-			d++;
 		}
 
 
