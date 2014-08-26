@@ -152,7 +152,6 @@ define(function (require, exports, module) {
 			}
 			editor._codeMirror.replaceRange('', {ch: 0, line: docStartLine}, {ch: 0, line: position.line});
 		}
-
         return signature;
     }
 
@@ -214,9 +213,23 @@ define(function (require, exports, module) {
 					case "livescript":
 						if (param_parts[1].charAt(0) != '{') {
 							param_parts.splice(1,0,false);  // add the type false
+							delimiters.splice(1,0,'');  // no delimuter
 							param.type = false;
 						} else {
-							param.type = param_parts[1].substring(1,param_parts[1].length-1); // remove { }
+							// get the correct ending }
+							for (var p = 1; p < param_parts.length; p++) {
+								if (param_parts[p].slice(-1) == '}') {
+									break;
+								}
+							}
+							var type = param_parts[1];
+							for (var t = 2; t <= p; t++) {
+								type += delimiters[t-1] + param_parts[t];
+							}
+							param.type = type.substring(1,type.length-1); // remove { }
+							// delete mulitline parts from type so param_parts[2] is the title
+							param_parts.splice(2,p-1);
+							delimiters.splice(2,p-1); // and remove the delimiters
 						}
 					break;
 					case "php":
@@ -249,13 +262,21 @@ define(function (require, exports, module) {
 					var  return_tag = commentTags[i].substr(6).trim(); // delete return and trim
 				}
 				if(return_tag.charAt(0) == '{') {
-					var endCurly = return_tag.indexOf('}');
-					tags.returns = {description: return_tag.substr(endCurly+1).trim(),type:return_tag.substring(1,endCurly)};
+					// get the correct end Curly
+					var bracketCount = 1;
+					for (var t = 1; t < return_tag.length; t++) {
+						if (return_tag.charAt(t) == '{') bracketCount++;
+						else if (return_tag.charAt(t) == '}') bracketCount--;
+						if (bracketCount === 0) break;
+					}
+					var endCurly = t;
+					tags.returns = {description: return_tag.substr(endCurly+1).trim(),type:return_tag.substring(1,endCurly).replace(/[ \n]*$/,'')};
 				}else {
 					var firstSpace = return_tag.indexOf(' ');
 					tags.returns = {type: (firstSpace >= 0) ? return_tag.substr(0,firstSpace) : return_tag.substr(0),
 									description: return_tag.substr(firstSpace+1).trim()};
 				}
+				break; // no @ after return[s]
 			}
 		}
 		tags.parameters = params;
@@ -284,8 +305,7 @@ define(function (require, exports, module) {
 
 		// add description
 		signature.description = "description" in signature ? signature.description.split(/\n/) : ['[[Description]]'];
-		output.push(' * '+signature.description[0]);
-		for (var d = 1; d < signature.description.length; d++) {
+		for (var d = 0; d < signature.description.length; d++) {
 			output.push(' * '+signature.description[d]);
 		}
 
@@ -294,20 +314,31 @@ define(function (require, exports, module) {
         var maxParamLength = 0;
         var maxTypeLength = 0;
         for (var i = 0; i < signature.parameters.length; i++) {
-            var parameter = signature.parameters[i];
-			parameter.type 			= parameter.type  ? parameter.type : '[[Type]]';
+            var parameter 	= signature.parameters[i]; // parameter changes => signature changes
+			parameter.type 	= parameter.type ? parameter.type.trim().split(/\n/) : ['[[Type]]'];
 
             if (parameter.title.length > maxParamLength) {
                 maxParamLength = parameter.title.length;
             }
-			if (parameter.type.length > maxTypeLength) {
-                maxTypeLength = parameter.type.length;
-            }
+
+			// check every line
+			for (var p = 0; p < parameter.type.length; p++) {
+				if (parameter.type[p].length > maxTypeLength) {
+					maxTypeLength = parameter.type[p].length;
+				}
+			}
         }
+
 		if (signature.returns.bool) {
-			signature.returns.type 	= signature.returns.type ? signature.returns.type : '[[Type]]';
-			maxTypeLength 			= signature.returns.type.length > maxTypeLength ? signature.returns.type.length : maxTypeLength;
+			signature.returns.type 	= signature.returns.type ? signature.returns.type.trim().split(/\n/) : ['[[Type]]'];
+			// check every line
+			for (var p = 0; p < signature.returns.type.length; p++) {
+				if (signature.returns.type[p].length > maxTypeLength) {
+					maxTypeLength = signature.returns.type[p].length;
+				}
+			}
 		}
+
 
 
 
@@ -317,26 +348,58 @@ define(function (require, exports, module) {
         // Add the parameter lines
         for (var i = 0; i < signature.parameters.length; i++) {
             var parameter = signature.parameters[i];
+			parameter.description 	= parameter.description	? parameter.description.split(/\n/) : ['[[Description]]'];
 
-            // get the right spaces for title and type
-            parameter.titleRightSpace		= new Array(maxParamLength + 2 - parameter.title.length).join(' ');
-            parameter.typeRightSpace 		= new Array(maxTypeLength + 2 - parameter.type.length).join(' ');
+			// get the right spaces for title and type
+			parameter.titleRightSpace	= new Array(maxParamLength + 2 - parameter.title.length).join(' ');
 
-			parameter.description 	= parameter.description	? parameter.description : '[[Description]]';
-            output.push(' * @param'+ tagRightSpace + wrapper[0] + parameter.type + wrapper[1] +
-						parameter.typeRightSpace + parameter.title + parameter.titleRightSpace +parameter.description);
+			 // singleline
+			if (parameter.type.length == 1) {
+				parameter.typeRightSpace 	= new Array(maxTypeLength + 2 - parameter.type[0].length).join(' ');
+				output.push(' * @param'+ tagRightSpace + wrapper[0] + parameter.type[0] + wrapper[1] +
+							parameter.typeRightSpace + parameter.title + parameter.titleRightSpace +parameter.description[0]);
+			} else { // multiline
+				output.push(' * @param' + tagRightSpace + wrapper[0]);
+				parameter.typeIndent = new Array(output[output.length-1].length-3).join(' ');
+				for (var t = 0; t < parameter.type.length; t++) {
+					output.push(' *   ' + parameter.typeIndent + parameter.type[t]);
+				}
+				parameter.typeRightSpace 	= new Array(maxTypeLength+2).join(' ');
+				output.push(' * ' + parameter.typeIndent + wrapper[1] +
+							parameter.typeRightSpace + parameter.title + parameter.titleRightSpace +parameter.description[0]);
+			}
+			parameter.descriptionIndent = new Array(output[output.length-1].length-2-parameter.description[0].length).join(' ');
+			for (var d = 1; d < parameter.description.length; d++) {
+				output.push(' * ' + parameter.descriptionIndent + parameter.description[d]);
+			}
         }
 
         // Add the return line
         if (signature.returns.bool) {
-			signature.returns.description 			= signature.returns.description ? signature.returns.description : '[[Description]]';
-			signature.returns.typeRightSpace 		= new Array(maxTypeLength + 2 - signature.returns.type.length).join(' ');
-            output.push(' * @returns ' + wrapper[0] + signature.returns.type + wrapper[1] +
-						signature.returns.typeRightSpace + signature.returns.description);
+			signature.returns.description 			= signature.returns.description ? signature.returns.description.split(/\n/) : ['[[Description]]'];
+			// singleline
+			if (signature.returns.type.length == 1) {
+				signature.returns.typeRightSpace = new Array(maxTypeLength + 2 - signature.returns.type[0].length).join(' ');
+				output.push(' * @returns ' + wrapper[0] + signature.returns.type[0] + wrapper[1] +
+							signature.returns.typeRightSpace + signature.returns.description[0]);
+				signature.returns.descriptionIndent = new Array(output[output.length-1].length-2-signature.returns.description[0].length).join(' ');
+			} else { // multiline
+				output.push(' * @returns ' + wrapper[0]);
+				signature.returns.typeIndent = new Array(output[output.length-1].length-3).join(' ');
+				for (var t = 0; t < signature.returns.type.length; t++) {
+					output.push(' *   ' + signature.returns.typeIndent + signature.returns.type[t]);
+				}
+				output.push(' * ' + signature.returns.typeIndent + wrapper[1]);
+				signature.returns.descriptionIndent = '';
+				output.push(' * ' + signature.returns.descriptionIndent + signature.returns.description[0]);
+			}
+
+			for (var d = 1; d < signature.returns.description.length; d++) {
+				output.push(' * ' + signature.returns.descriptionIndent + signature.returns.description[d]);
+			}
         }
 
         output.push(' */');
-
         return signature.indentation + output.join('\n' + signature.indentation) + '\n';
     }
 
