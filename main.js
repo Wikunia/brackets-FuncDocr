@@ -686,22 +686,27 @@ define(function (require, exports, module) {
 						// try to get the return type
 						var matches = /\s*?([\s\S]*?);/.exec(code.substr(i+7));
 						var returnText = matches[1].trim();
+						var addType;
 						if (returnText == "false" || returnText == "true") {
+							addType = "Boolean";
 							if (returns.type) {
-								returns.type += '|Boolean';
-							} else returns.type = "Boolean";
+								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+							} else returns.type = addType;
 						} else if (returnText.charAt(0) == '{') {
+							addType = "Object";
 							if (returns.type) {
-								returns.type += '|Object';
-							} else returns.type = "Object";
+								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+							} else returns.type = addType;
 						} else if (returnText.charAt(0) == "[") {
+							addType = "Array";
 							if (returns.type) {
-								returns.type += '|Array';
-							} else returns.type = "Array";
+								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+							} else returns.type = addType;
 						} else if (returnText.charAt(0) == "'" || returnText.charAt(0) == '"') {
+							addType = "String";
 							if (returns.type) {
-								returns.type += '|String';
-							} else returns.type = "String";
+								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+							} else returns.type = addType;
 						}
 					}
 					break;
