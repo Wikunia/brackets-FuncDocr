@@ -118,10 +118,10 @@ define(function (require, exports, module) {
 		// default
 		signature.returns = {bool: false};
 
-		// get the function code and returns (Boolean)
+		// get the function code and returns (Object)
 		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
 		if (codeTypes) {
-			signature.returns = {bool:codeTypes.returns};
+			signature.returns = codeTypes.returns;
 			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
 				signature.parameters[i].type = codeTypes.paramTypes[i];
 			}
@@ -147,7 +147,13 @@ define(function (require, exports, module) {
 				}
 			}
 			if (signature.returns.bool) {
-				signature.returns = docSignature.returns ? docSignature.returns : {};
+				if (docSignature.returns) {
+					if (docSignature.returns.type == '[[Type]]') {
+						signature.returns.description = docSignature.returns.description;
+					} else {
+						signature.returns = docSignature.returns;
+					}
+				}
 				signature.returns.bool = true;
 			}
 			editor._codeMirror.replaceRange('', {ch: 0, line: docStartLine}, {ch: 0, line: position.line});
@@ -611,22 +617,6 @@ define(function (require, exports, module) {
         return field;
     }
 
-
-    // =========================================================================
-    // Initialization
-    // =========================================================================
-
-    /**
-     * Add/Remove listeners when the editor changes
-     * @param {object} event     Event object
-     * @param {editor} newEditor Brackets editor
-     * @param {editor} oldEditor Brackets editor
-     */
-    function updateEditorListeners(event, newEditor, oldEditor) {
-        $(oldEditor).off('keyEvent', handleTab);
-        $(newEditor).on('keyEvent', handleTab);
-    }
-
 	// =========================================================================
     // Analyze Function Code
     // =========================================================================
@@ -634,18 +624,19 @@ define(function (require, exports, module) {
 	/**
 	 * Get the code of a function at positon and check if the function returns a value
 	 * Try to guess the parameter types
-	 * @param   {Object} editor   Brackets editor
-	 * @param   {Object} position current position (.ch,.line)
-	 * @param   {Object} params   function parameters
-	 * @returns {Object} .code = code of function, .returns (Boolean) true if function returns, .paramTypes (Array) Type of parameter
+	 * @param   {Object}         editor   Brackets editor
+	 * @param   {Object}         position current position (.ch,.line)
+	 * @param   {Object}         params   function parameters
+	 * @returns {Object|Boolean} .code = code of function, .returns (Boolean) true if function returns, .paramTypes (Array) Type of parameter
 	 */
 	function getFunctionCodeTypes(editor,position,params) {
 		var code = editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
 		var length = code.length;
-		var delimiter = '';
+		var delimiter = false;
 		var bracketCount = 0;
-		var returnStatement = false;
+		var returns = {bool:false,type:false};
 		var paramsFirstChars = [];
+		var line = 0;
 
 		for (var i = 0; i < params.length; i++) {
 			paramsFirstChars.push(params[i].title.charAt(0));
@@ -689,19 +680,41 @@ define(function (require, exports, module) {
 
 			switch (char) {
 				case 'r':
-					if (delimiter == "" && code.substr(i,6) == "return" && code.charAt(i+6) != ";") returnStatement = true;
+					if (delimiter == "" && /\sreturn[\[{ ]/.test(code.substr(i-1,8))) {
+						returns.bool = true;
+						// try to get the return type
+						var matches = /\s*?([\s\S]*?);/.exec(code.substr(i+7));
+						var returnText = matches[1].trim();
+						if (returnText == "false" || returnText == "true") {
+							if (returns.type) {
+								returns.type += '|Boolean';
+							} else returns.type = "Boolean";
+						} else if (returnText.charAt(0) == '{') {
+							if (returns.type) {
+								returns.type += '|Object';
+							} else returns.type = "Object";
+						} else if (returnText.charAt(0) == "[") {
+							if (returns.type) {
+								returns.type += '|Array';
+							} else returns.type = "Array";
+						} else if (returnText.charAt(0) == "'" || returnText.charAt(0) == '"') {
+							if (returns.type) {
+								returns.type += '|String';
+							} else returns.type = "String";
+						}
+					}
 					break;
 
 				case '"':
 				case "'":
 					if (delimiter) {
 						if (char === delimiter) // closing ' or "
-							delimiter = '';
+							delimiter = false;
 					}
 					else delimiter = char; // starting ' or "
 					break;
 				case '/':
-					if (delimiter == '') {
+					if (!delimiter) {
 						var lookahead = code.charAt(++i);
 						switch (lookahead) {
 							case '/': // comment
@@ -714,10 +727,10 @@ define(function (require, exports, module) {
 								break;
 							default:
 								// check for regular expression
-								if (/[-+*%!=(;?,<>~]\s*$/.test(code.substring(0,i-1))) { // i-1 because ++i for lookahead
+								if (/[|&-+*%!=(;?,<>~]\s*$/.test(code.substring(0,i-1))) { // i-1 because ++i for lookahead
 									var endRegex = /[^\\](?:[\\]{2})*\//;
 									var endRegexMatch = endRegex.exec(code.substring(i,code.indexOf('\n',i)));
-									i += endRegex ? endRegexMatch.index+endRegexMatch[0].length : 0;
+									i += endRegexMatch ? endRegexMatch.index+endRegexMatch[0].length : 0;
 								}
 						}
 					}
@@ -741,7 +754,7 @@ define(function (require, exports, module) {
 						if (bracketCount === 0) {
 							return {
 								code:code.substr(0,i+1),
-								returns: returnStatement,
+								returns: returns,
 								paramTypes: paramTypes
 							}
 						}
@@ -756,6 +769,22 @@ define(function (require, exports, module) {
 		var indexOf = this.substring(startpos || 0).search(regex);
 		return (indexOf >= 0) ? (indexOf + (startpos || 0)) : indexOf;
 	}
+
+	// =========================================================================
+    // Initialization
+    // =========================================================================
+
+    /**
+     * Add/Remove listeners when the editor changes
+     * @param {object} event     Event object
+     * @param {editor} newEditor Brackets editor
+     * @param {editor} oldEditor Brackets editor
+     */
+    function updateEditorListeners(event, newEditor, oldEditor) {
+        $(oldEditor).off('keyEvent', handleTab);
+        $(newEditor).on('keyEvent', handleTab);
+    }
+
 
 	AppInit.appReady(function () {
 		require('hints');
