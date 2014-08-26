@@ -436,7 +436,8 @@ define(function (require, exports, module) {
 		var nextField = getNextField({start:startPosition,end:startPosition},false);
 
         if (nextField) {
-             editor.setSelection(nextField[1], nextField[0]); // set the selection
+            editor.setSelection(nextField[1], nextField[0]); // set the selection
+			CommandManager.execute(Commands.SHOW_CODE_HINTS);
 		}
 
         EditorManager.focusEditor();
