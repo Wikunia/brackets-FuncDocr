@@ -797,7 +797,7 @@ define(function (require, exports, module) {
 
 		CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
 		KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Alt-D');
-		KeyBindingManager.addBinding(COMMAND_ID, 'Cmd-Shift-D', 'mac');
+		KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Shift-D', 'mac');
 
 		$(EditorManager).on('activeEditorChange', updateEditorListeners);
 		$(EditorManager.getCurrentFullEditor()).on('keyEvent', handleTab);

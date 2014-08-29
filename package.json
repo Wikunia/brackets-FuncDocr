@@ -3,7 +3,7 @@
     "title": "FuncDocr",
     "description": "Generates JSDoc,PHPDoc annotations for your functions.",
     "homepage": "https://github.com/wikunia/brackets-funcdocr",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "author": "Ole Kröger <o.kroeger@wikunia.de>",
     "license": "Creative Commons v3.0",
     "engines": {
