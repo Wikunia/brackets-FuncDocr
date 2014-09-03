@@ -50,6 +50,8 @@ define(function (require, exports, module) {
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
 	var DOCBLOCK_PAR_OR_RET = /^\s*\* (\s{6,}|@(param|returns?))/;
+	var DOCBLOCK_PAR_LINE 	= /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
+	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
 
 
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
@@ -71,6 +73,7 @@ define(function (require, exports, module) {
     };
 
 	var langId;
+	var hintOpen = false; // hintManager not open
 
     // =========================================================================
     // Doc Block Generation
@@ -148,7 +151,7 @@ define(function (require, exports, module) {
 				}
 			}
 			if (signature.returns.bool) {
-				if (docSignature.returns) {
+				if (docSignature.returns.bool) {
 					if (docSignature.returns.type == '[[Type]]') {
 						signature.returns.description = docSignature.returns.description;
 					} else {
@@ -283,7 +286,10 @@ define(function (require, exports, module) {
 					tags.returns = {type: (firstSpace >= 0) ? return_tag.substr(0,firstSpace) : return_tag.substr(0),
 									description: return_tag.substr(firstSpace+1).trim()};
 				}
+				tags.returns.bool = true;
 				break; // no @ after return[s]
+			} else {
+				tags.returns = {bool: false};
 			}
 		}
 		tags.parameters = params;
@@ -316,38 +322,10 @@ define(function (require, exports, module) {
 			output.push(' * '+signature.description[d]);
 		}
 
-
         // Determine the longest parameter and the longest type so we can right-pad them
-        var maxParamLength = 0;
-        var maxTypeLength = 0;
-        for (var i = 0; i < signature.parameters.length; i++) {
-            var parameter 	= signature.parameters[i]; // parameter changes => signature changes
-			parameter.type 	= parameter.type ? parameter.type.trim().split(/\n/) : ['[[Type]]'];
-
-            if (parameter.title.length > maxParamLength) {
-                maxParamLength = parameter.title.length;
-            }
-
-			// check every line
-			for (var p = 0; p < parameter.type.length; p++) {
-				if (parameter.type[p].length > maxTypeLength) {
-					maxTypeLength = parameter.type[p].length;
-				}
-			}
-        }
-
-		if (signature.returns.bool) {
-			signature.returns.type 	= signature.returns.type ? signature.returns.type.trim().split(/\n/) : ['[[Type]]'];
-			// check every line
-			for (var p = 0; p < signature.returns.type.length; p++) {
-				if (signature.returns.type[p].length > maxTypeLength) {
-					maxTypeLength = signature.returns.type[p].length;
-				}
-			}
-		}
-
-
-
+		var maxPadding = getMaxPadding(signature);
+		var maxParamLength = maxPadding.title;
+        var maxTypeLength = maxPadding.type;
 
 		// if returns is set show align the types of params and returns
 		var tagRightSpace = signature.returns.bool ? '   ' : ' ';
@@ -410,7 +388,44 @@ define(function (require, exports, module) {
         return signature.indentation + output.join('\n' + signature.indentation) + '\n';
     }
 
+	/**
+	 * Get the maximum padding for param types and titles
+	 * @param   {Object} signature .parameters,.returns
+	 * @returns {Object} .title,.type
+	 */
+	function getMaxPadding(signature) {
+		var maxParamLength = 0;
+		var maxTypeLength = 0;
+		for (var i = 0; i < signature.parameters.length; i++) {
+			var parameter 	= signature.parameters[i]; // parameter changes => signature changes
+			parameter.type 	= parameter.type ? parameter.type.trim().split(/\n/) : ['[[Type]]'];
 
+			if (parameter.title.length > maxParamLength) {
+				maxParamLength = parameter.title.length;
+			}
+
+			// check every line
+			for (var p = 0; p < parameter.type.length; p++) {
+				if (parameter.type[p].length > maxTypeLength) {
+					maxTypeLength = parameter.type[p].length;
+				}
+			}
+		}
+
+		if (signature.returns.bool) {
+			signature.returns.type 	= signature.returns.type ? signature.returns.type.trim().split(/\n/) : ['[[Type]]'];
+			// check every line
+			for (var p = 0; p < signature.returns.type.length; p++) {
+				if (signature.returns.type[p].length > maxTypeLength) {
+					maxTypeLength = signature.returns.type[p].length;
+				}
+			}
+		}
+		return {
+			title: 	maxParamLength,
+			type:	maxTypeLength
+		}
+	}
 
     /**
      * Insert the docBlock
@@ -458,7 +473,6 @@ define(function (require, exports, module) {
 	/**
 	 * Handle the key Event jump to handleEnter or handleTab (inside a doc block) or do nothing
 	 * @param {keyEvent} $event jQuery key event
-	 *
 	 * @param {editor}   editor Brackets editor
 	 * @param {Object}   event  key event
 	 */
@@ -471,10 +485,11 @@ define(function (require, exports, module) {
 			var docBlockPos = insideDocBlock(selection,backward);
 			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
 				handleTab(editor,event,docBlockPos);
-			} else if (event.keyCode === KeyEvent.DOM_VK_RETURN) {	// no docBlock needed (check it later)
+			} else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) {	// no docBlock needed (check it later)
 				handleEnter(editor);
 			}
 		}
+		hintOpen = CodeHintManager.isOpen();
 	}
 
 	/**
@@ -634,12 +649,27 @@ define(function (require, exports, module) {
     /**
      * Handle the tab key when within a doc block
      * @param {editor} editor      Brackets editor
-     * @param {Object} event       keyEvent
-     * @param {Object} docBlockPos (.start,.end) docBlock line start and end
+     * @param {event}  event       keyEvent
+     * @param {object} docBlockPos (.start,.end) docBlock line start and end [[Tag]]
      */
     function handleTab(editor,event,docBlockPos) {
 		var selection = editor.getSelection();
 		var backward  = event.shiftKey;
+		var document  = editor.document;
+		// get current doc block
+		var doc 	  = document.getRange({
+							line: docBlockPos.start+1, // without /**
+							ch: 0
+						},{
+							line: docBlockPos.end, // without */
+							ch:0
+						});
+		// get doc signature
+		var tags = getCurrentDocTags(doc.split('\n'));
+		// get the maximum paddings
+		var maxPadding = getMaxPadding(tags);
+		updatePadding(editor,docBlockPos,tags,maxPadding);
+
 		var nextField = getNextField(selection, backward, docBlockPos);
 
 		if (nextField) {
@@ -649,10 +679,70 @@ define(function (require, exports, module) {
 		}
     }
 
+	/**
+	 * Update the padding for parameter types and title and return type
+	 * @param {Object} editor        brackets editor
+	 * @param {Object} docBlockPos   docBlock position (.start,.end)
+	 * @param {Object} tags          current doc tags
+	 * @param {Object} maxPaddingObj maximum padding (.title,.type)
+	 */
+	function updatePadding(editor,docBlockPos,tags,maxPaddingObj) {
+		var document = editor.document;
+		var maxPadding = [];
+		maxPadding[0] = maxPaddingObj.type + PARAM_WRAPPERS[langId][0].length + PARAM_WRAPPERS[langId][1].length+1; // one space
+		maxPadding[1] = maxPaddingObj.title + 1; // one space
+		for (var i = docBlockPos.start; i <= docBlockPos.end; i++) {
+			var match;
+			var line = document.getLine(i);
+			var paramMatch = DOCBLOCK_PAR_LINE.exec(line);
+			var returnMatch = DOCBLOCK_RET_LINE.exec(line);
+			var nrOfPaddings = 2; // for params (for return 1 (no title padding))
+			if (paramMatch || returnMatch) {
+				if (paramMatch) {
+					match = paramMatch;
+				} else {
+					match = returnMatch;
+					nrOfPaddings = 1;
+				}
+				for (var m = 0; m < nrOfPaddings; m++) {
+					var index;
+					if (m == 0)
+						index = match[1].length + match[2].length;
+					else
+						index = match[1].length + maxPadding[0] + match[3].length;
+
+					// add padding
+					if (match[m+2].length < maxPadding[m]) {
+						var addPadding = new Array(maxPadding[m]-match[m+2].length+1).join(' ');
+						editor._codeMirror.replaceRange(
+							addPadding,{
+								line:i,
+								ch:index
+							}, {
+								line:i,
+								ch:index
+							}
+						);
+					} else if (match[m+2].length > maxPadding[m]) {
+						// remove padding
+						editor._codeMirror.replaceRange(
+							'',{
+								line:i,
+								ch:index-(match[m+2].length-maxPadding[m])
+							}, {
+								line:i,
+								ch:index
+							}
+						);
+					}
+				}
+			}
+		}
+	}
 
     /**
-     * Gets the next tabbable field within the doc block based on the cursor's position
-     * @param   {Object}  selection   selected Text psoition {start<.ch,.line>,end<.ch,.line>
+     * Gets the	next tabbable field within the doc block based on the cursor's position
+     * @param   {Object}  selection   selected Text position {start<.ch,.line>,end<.ch,.line>}
      * @param   {Boolean} backward    Set to true to search backward
      * @param   {Object}  docBlockPos start and end position of the docBlock
      * @param   {Boolean} stop        Set to true stop looping back around to search again
