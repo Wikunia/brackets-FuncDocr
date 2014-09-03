@@ -40,7 +40,7 @@ define(function (require, exports, module) {
 
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_TAB      = 'funcdocrTab';
-    var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{/;
+    var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)/;
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
@@ -49,6 +49,8 @@ define(function (require, exports, module) {
     var DOCBLOCK_END        = /^\s*\*\//;
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
+	var DOCBLOCK_PAR_OR_RET = /^\s*\* (\s{6,}|@(param|returns?))/;
+
 
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
 	var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
@@ -73,7 +75,6 @@ define(function (require, exports, module) {
     // =========================================================================
     // Doc Block Generation
     // =========================================================================
-
 
     /**
      * Handle the shortcut to create a doc block
@@ -427,13 +428,18 @@ define(function (require, exports, module) {
         editor._codeMirror.replaceRange(docBlock, position);
 
         // Start at the first line, just before [[Description]]
-        var lines           = docBlock.split('\n');
-		var startPosition   = editor.getCursorPos();
+        var lines         = docBlock.split('\n');
+		var endPosition   = editor.getCursorPos();
+		var startPosition = Object.create(endPosition);
 		startPosition.line -= lines.length - 2;
         startPosition.ch    = lines[0].length;
 
 		// jump to te first [[Tag]]
-		var nextField = getNextField({start:startPosition,end:startPosition},false);
+		var docBlockPos = {
+			start: 	startPosition.line-1,
+			end:	endPosition.line-1
+		};
+		var nextField = getNextField({start:startPosition,end:startPosition},false,docBlockPos);
 
         if (nextField) {
             editor.setSelection(nextField[1], nextField[0]); // set the selection
@@ -444,49 +450,42 @@ define(function (require, exports, module) {
     }
 
 
+	// =========================================================================
+    // Key Handling (Enter,Tab)
     // =========================================================================
-    // Tab Handling
-    // =========================================================================
 
 
-    /**
-     * Handle the tab key when within a doc block
-     * @param {object} event  jQuery event object
-     * @param {editor} editor Brackets editor
-     * @param {object} event  Event object
-     */
-    function handleTab($event, editor, event) {
-        if (event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) {
-            var editor    = EditorManager.getCurrentFullEditor();
-            var selection = editor.getSelection();
-            var backward  = event.shiftKey;
-            var nextField = getNextField(selection, backward);
+	/**
+	 * Handle the key Event jump to handleEnter or handleTab (inside a doc block) or do nothing
+	 * @param {keyEvent} $event jQuery key event
+	 *
+	 * @param {editor}   editor Brackets editor
+	 * @param {Object}   event  key event
+	 */
+	function handleKey($event,editor,event) {
+		langId  	  = editor.getLanguageForSelection().getId();
+		var selection = editor.getSelection();
+		var backward  = event.shiftKey;
+		if (event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB ||
+			event.type === 'keyup'  && event.keyCode === KeyEvent.DOM_VK_RETURN) {
+			var docBlockPos = insideDocBlock(selection,backward);
+			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
+				handleTab(editor,event,docBlockPos);
+			} else if (event.keyCode === KeyEvent.DOM_VK_RETURN) {	// no docBlock needed (check it later)
+				handleEnter(editor);
+			}
+		}
+	}
 
-            if (nextField) {
-                editor.setSelection(nextField[1], nextField[0]); // set the selection
-				CommandManager.execute(Commands.SHOW_CODE_HINTS);
-                event.preventDefault();
-            }
-        }
-    }
-
-
-    /**
-     * Gets the next tabbable field within the doc block based on the cursor's position
-     * @param   {Object}  selection selected Text psoition {start<.ch,.line>,end<.ch,.line>
-     * @param   {Boolean} backward  Set to true to search backward
-     * @param   {Boolean} stop      Set to true stop looping back around to search again
-     * @returns {array}   start position,end position (.ch,.line)
-     */
-    function getNextField(selection, backward, stop) {
-        var editor    = EditorManager.getCurrentFullEditor();
-        var document  = editor.document;
-        var lineCount = editor.lineCount();
-
-        // Determine the cursor position based on the selection
+	/**
+	 * Get the current position based on the selection and backward or not
+	 * @param   {Object}  selection current selection
+	 * @param   {Boolean} backward  true => back
+	 * @returns {Object}  position (.ch,.line)
+	 */
+	function getPosition(selection,backward) {
         var position;
-
-        if (selection.start.line !== selection.end.line) {
+		if (selection.start.line !== selection.end.line) {
             position = selection.start.line > selection.end.line ? selection.start : selection.end;
         }
         else {
@@ -497,6 +496,22 @@ define(function (require, exports, module) {
         if (backward) {
             position = position === selection.start ? selection.end : selection.start;
         }
+		return position;
+	}
+
+	/**
+	 * Check if the current selection is inside a doc block
+	 * @param   {Object}         selection current selection
+	 * @param   {Boolean}        backward  true => back
+	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside [[Tag]]
+	 */
+	function insideDocBlock(selection,backward) {
+		var editor    = EditorManager.getCurrentFullEditor();
+        var document  = editor.document;
+        var lineCount = editor.lineCount();
+
+        // Determine the cursor position based on the selection
+        var position = getPosition(selection,backward);
 
         // Snap to the word boundary
         var currentLine = document.getLine(position.line);
@@ -534,7 +549,7 @@ define(function (require, exports, module) {
 
         // If no start was found, we're not in a doc block
         if (start === null) {
-            return null;
+            return false;
         }
 
         // Search for the end of the doc block
@@ -557,8 +572,100 @@ define(function (require, exports, module) {
 
         // If no end was found, we're not in a doc block
         if (end === null) {
-            return null;
+            return false;
         }
+
+		// we are in a doc block
+		return {start: start, end: end};
+	}
+
+
+	// =========================================================================
+    // Enter Handling
+    // =========================================================================
+
+	/**
+     * Handle the enter key when within a doc block
+     * @param {editor} editor Brackets editor
+     */
+    function handleEnter(editor) {
+		var editor  	= EditorManager.getCurrentFullEditor();
+		var document 	= editor.document;
+		var position	= editor.getCursorPos();
+		var lastLine 	= document.getLine(position.line-1); // before enter
+		var currentLine = document.getLine(position.line); // after enter
+		enterAfter(editor,lastLine,currentLine,position);
+    }
+
+	/**
+	 * Insert * in the line after line and padding
+	 * @param {Object} editor      brackets editor
+	 * @param {String} lastLine    line before enter
+	 * @param {String} currentLine line after enter
+	 * @param {Object} position    current position
+	 */
+	function enterAfter(editor,lastLine,currentLine,position) {
+		if (DOCBLOCK_PAR_OR_RET.test(lastLine)) {
+			// get the correct wrapper ({} for JS or '' for PHP)
+			var wrapper 		= PARAM_WRAPPERS[langId];
+			var paddingRegex 	= new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+[^ ]+\\s+');
+			var match 			= paddingRegex.exec(lastLine);
+			// for the second enter there is no * @param or @returns
+			if (!match) {
+				paddingRegex 	= new RegExp('^(\\s+)\\*\\s+');
+				match 			= paddingRegex.exec(lastLine);
+			}
+			if (match) {
+				// match[1] => spaces/tabs before *
+				var padding = match[1]+'\*'+new Array(match[0].length-match[1].length).join(' ');
+				editor.document.replaceRange(
+					padding,
+				 	{line:position.line,ch:0},
+				 	{line:position.line,ch:currentLine.length}
+				);
+			}
+		}
+	}
+
+    // =========================================================================
+    // Tab Handling
+    // =========================================================================
+
+    /**
+     * Handle the tab key when within a doc block
+     * @param {editor} editor      Brackets editor
+     * @param {Object} event       keyEvent
+     * @param {Object} docBlockPos (.start,.end) docBlock line start and end
+     */
+    function handleTab(editor,event,docBlockPos) {
+		var selection = editor.getSelection();
+		var backward  = event.shiftKey;
+		var nextField = getNextField(selection, backward, docBlockPos);
+
+		if (nextField) {
+			editor.setSelection(nextField[1], nextField[0]); // set the selection
+			CommandManager.execute(Commands.SHOW_CODE_HINTS);
+			event.preventDefault();
+		}
+    }
+
+
+    /**
+     * Gets the next tabbable field within the doc block based on the cursor's position
+     * @param   {Object}  selection   selected Text psoition {start<.ch,.line>,end<.ch,.line>
+     * @param   {Boolean} backward    Set to true to search backward
+     * @param   {Object}  docBlockPos start and end position of the docBlock
+     * @param   {Boolean} stop        Set to true stop looping back around to search again
+     * @returns {array}   start position,end position (.ch,.line)
+     */
+    function getNextField(selection, backward, docBlockPos, stop) {
+		var editor    	= EditorManager.getCurrentFullEditor();
+        var document 	= editor.document;
+        var lineCount 	= editor.lineCount();
+
+		var position	= getPosition(selection,backward);
+		var start 		= docBlockPos.start;
+		var end 		= docBlockPos.end;
 
         // Search for the next field
         var limit     = backward ? position.line - start : end - position.line;
@@ -612,7 +719,7 @@ define(function (require, exports, module) {
                 end   : loopPosition
             };
 
-            return getNextField(loopSelection, backward, true);
+            return getNextField(loopSelection, backward, docBlockPos, true);
         }
 
         return field;
@@ -787,8 +894,8 @@ define(function (require, exports, module) {
      * @param {editor} oldEditor Brackets editor
      */
     function updateEditorListeners(event, newEditor, oldEditor) {
-        $(oldEditor).off('keyEvent', handleTab);
-        $(newEditor).on('keyEvent', handleTab);
+        $(oldEditor).off('keyEvent', handleKey);
+        $(newEditor).on('keyEvent', handleKey);
     }
 
 
@@ -800,7 +907,7 @@ define(function (require, exports, module) {
 		KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Shift-D', 'mac');
 
 		$(EditorManager).on('activeEditorChange', updateEditorListeners);
-		$(EditorManager.getCurrentFullEditor()).on('keyEvent', handleTab);
+		$(EditorManager.getCurrentFullEditor()).on('keyEvent', handleKey);
 
 		var docrHints = new DocrHint();
 		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
