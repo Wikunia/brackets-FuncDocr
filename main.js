@@ -51,7 +51,7 @@ define(function (require, exports, module) {
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
 	var DOCBLOCK_PAR_OR_RET = /^\s*\* (\s{6,}|@(param|returns?))/;
 	var DOCBLOCK_PAR_LINE 	= /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
-	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
+	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
 
 
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
@@ -164,6 +164,7 @@ define(function (require, exports, module) {
 		}
         return signature;
     }
+
 
 	/**
 	 * Get the existing doc tags
