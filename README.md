@@ -11,7 +11,7 @@ A brackets extension to generate JS/PHPDocs for your functions.
 The extension will provide a function documentation:
 ![](https://cloud.githubusercontent.com/assets/4931746/4141317/f9303404-33ac-11e4-8e3c-c72925b4e550.gif)
 
-`[[Description]]` will be selected so you can start to type. To jump to the next `[[tag]]` you can use `Tab` or jump to the last with `Shift-Tab`. You can use the shortcut again on the function line to indent the parameters and types.
+`[[Description]]` will be selected so you can start to type. To jump to the next `[[tag]]` you can use `Tab` or jump to the last with `Shift-Tab`. The indenting updates on a tab jump (live indenting).
 
 You will get hints for the `[[Type]]` tag.
 
