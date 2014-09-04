@@ -52,6 +52,7 @@ define(function (require, exports, module) {
 	var DOCBLOCK_PAR_OR_RET = /^\s*\* (\s{6,}|@(param|returns?))/;
 	var DOCBLOCK_PAR_LINE 	= /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
 	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
+	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
 
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
@@ -519,7 +520,7 @@ define(function (require, exports, module) {
 	 * Check if the current selection is inside a doc block
 	 * @param   {Object}         selection current selection
 	 * @param   {Boolean}        backward  true => back
-	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside [[Tag]]
+	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside
 	 */
 	function insideDocBlock(selection,backward) {
 		var editor    = EditorManager.getCurrentFullEditor();
@@ -624,16 +625,23 @@ define(function (require, exports, module) {
 		if (DOCBLOCK_PAR_OR_RET.test(lastLine)) {
 			// get the correct wrapper ({} for JS or '' for PHP)
 			var wrapper 		= PARAM_WRAPPERS[langId];
-			var paddingRegex 	= new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+[^ ]+\\s+');
+			var paddingRegex 	= new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+([^ ]+\\s+)');
 			var match 			= paddingRegex.exec(lastLine);
+			var length;
 			// for the second enter there is no * @param or @returns
 			if (!match) {
-				paddingRegex 	= new RegExp('^(\\s+)\\*\\s+');
-				match 			= paddingRegex.exec(lastLine);
+				paddingRegex = new RegExp('^(\\s+)\\*\\s+');
+				match 		 = paddingRegex.exec(lastLine);
+				length 		 = match[0].length-match[1].length;
+			} else {
+				length 		 = match[0].length-match[1].length;
+				// there is no title for @returns
+				if (match[2].indexOf('return') == 0) {
+					length -= match[3].length;
+				}
 			}
 			if (match) {
-				// match[1] => spaces/tabs before *
-				var padding = match[1]+'\*'+new Array(match[0].length-match[1].length).join(' ');
+				var padding = match[1]+'\*'+new Array(length).join(' ');
 				editor.document.replaceRange(
 					padding,
 				 	{line:position.line,ch:0},
@@ -651,7 +659,7 @@ define(function (require, exports, module) {
      * Handle the tab key when within a doc block
      * @param {editor} editor      Brackets editor
      * @param {event}  event       keyEvent
-     * @param {object} docBlockPos (.start,.end) docBlock line start and end [[Tag]]
+     * @param {object} docBlockPos (.start,.end) docBlock line start and end
      */
     function handleTab(editor,event,docBlockPos) {
 		var selection = editor.getSelection();
@@ -690,31 +698,51 @@ define(function (require, exports, module) {
 	function updatePadding(editor,docBlockPos,tags,maxPaddingObj) {
 		var document = editor.document;
 		var maxPadding = [];
+		var lastMatch = false;
 		maxPadding[0] = maxPaddingObj.type + PARAM_WRAPPERS[langId][0].length + PARAM_WRAPPERS[langId][1].length+1; // one space
 		maxPadding[1] = maxPaddingObj.title + 1; // one space
 		for (var i = docBlockPos.start; i <= docBlockPos.end; i++) {
 			var match;
-			var line = document.getLine(i);
-			var paramMatch = DOCBLOCK_PAR_LINE.exec(line);
-			var returnMatch = DOCBLOCK_RET_LINE.exec(line);
-			var nrOfPaddings = 2; // for params (for return 1 (no title padding))
-			if (paramMatch || returnMatch) {
+			var line         = document.getLine(i);
+			var paramMatch   = DOCBLOCK_PAR_LINE.exec(line);
+			var returnMatch  = DOCBLOCK_RET_LINE.exec(line);
+			var nrOfPaddings = 2; // for params (for return 1 (no title padding)
+
+			var index             = false;
+			var currentPadding    = false;
+			var currentMaxPadding = false;
+			if ((paramMatch || returnMatch || lastMatch) && !DOCBLOCK_END.test(line)) {
 				if (paramMatch) {
 					match = paramMatch;
-				} else {
-					match = returnMatch;
+					lastMatch = 'param';
+				} else if (returnMatch) {
+					match 		 = returnMatch;
+					lastMatch 	 = match[1].indexOf('returns') >= 0 ? 'returns' : 'return';
 					nrOfPaddings = 1;
+				} else {
+					nrOfPaddings = 1;
+					match 		 = DOCBLOCK_MULTI_LINE.exec(line);
+					index 		 = match[0].length;
+
+					currentPadding    = match[3].length;
+					currentMaxPadding = 2+lastMatch.length+1+maxPadding[0]+maxPadding[1]; // 2= ' @' 1 => one space before type
 				}
 				for (var m = 0; m < nrOfPaddings; m++) {
-					var index;
-					if (m == 0)
-						index = match[1].length + match[2].length;
-					else
-						index = match[1].length + maxPadding[0] + match[3].length;
-
+					if (!index) {
+						if (m == 0)
+							index = match[1].length + match[2].length;
+						else
+							index = match[1].length + maxPadding[0] + match[3].length;
+					}
+					if (!currentPadding) {
+						currentPadding = match[m+2].length;
+					}
+					if (!currentMaxPadding) {
+						currentMaxPadding = maxPadding[m];
+					}
 					// add padding
-					if (match[m+2].length < maxPadding[m]) {
-						var addPadding = new Array(maxPadding[m]-match[m+2].length+1).join(' ');
+					if (currentPadding < currentMaxPadding) {
+						var addPadding = new Array(currentMaxPadding-currentPadding+1).join(' ');
 						editor._codeMirror.replaceRange(
 							addPadding,{
 								line:i,
@@ -724,18 +752,22 @@ define(function (require, exports, module) {
 								ch:index
 							}
 						);
-					} else if (match[m+2].length > maxPadding[m]) {
+					} else if (currentPadding > currentMaxPadding) {
 						// remove padding
 						editor._codeMirror.replaceRange(
 							'',{
 								line:i,
-								ch:index-(match[m+2].length-maxPadding[m])
+								ch:index-(currentPadding-currentMaxPadding)
 							}, {
 								line:i,
 								ch:index
 							}
 						);
 					}
+					// reset variables for the next loop pass
+					index 			  = false;
+					currentPadding    = false;
+					currentMaxPadding = false;
 				}
 			}
 		}
