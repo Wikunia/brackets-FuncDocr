@@ -641,11 +641,14 @@ define(function (require, exports, module) {
 				}
 			}
 			if (match) {
+				// get the number of characters thats need to be replaced
+				var replaceMatch = /^\s*(\*)?\s*/.exec(currentLine);
+				var replaceLength = replaceMatch[0].length;
 				var padding = match[1]+'\*'+new Array(length).join(' ');
 				editor.document.replaceRange(
 					padding,
 				 	{line:position.line,ch:0},
-				 	{line:position.line,ch:currentLine.length}
+				 	{line:position.line,ch:replaceLength}
 				);
 			}
 		}
