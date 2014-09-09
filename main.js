@@ -459,7 +459,7 @@ define(function (require, exports, module) {
 		var nextField = getNextField({start:startPosition,end:startPosition},false,docBlockPos);
 
         if (nextField) {
-            editor.setSelection(nextField[1], nextField[0]); // set the selection
+            editor.setSelection(nextField[0], nextField[1]); // set the selection
 			CommandManager.execute(Commands.SHOW_CODE_HINTS);
 		}
 
@@ -685,7 +685,7 @@ define(function (require, exports, module) {
 		var nextField = getNextField(selection, backward, docBlockPos);
 
 		if (nextField) {
-			editor.setSelection(nextField[1], nextField[0]); // set the selection
+			editor.setSelection(nextField[0], nextField[1]); // set the selection
 			CommandManager.execute(Commands.SHOW_CODE_HINTS);
 			event.preventDefault();
 		}
@@ -828,7 +828,7 @@ define(function (require, exports, module) {
                     ch   : index + match[1].length + start_offset
 				};
 
-                field = backward ? [endPosition, startPosition] : [startPosition, endPosition];
+                field = [endPosition, startPosition];
                 break;
             }
         }
