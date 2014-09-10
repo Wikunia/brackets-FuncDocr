@@ -503,11 +503,12 @@ define(function (require, exports, module) {
 							{line:currentLineNr-1,ch:0},
 							{line:currentLineNr+1,ch:0}
 						);
+						handleDocBlock();
 					} else  // for reasonable comments by Peter Flynn
-						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
+						if (currentLine.trim() == '*' && nextLine.trim() == '*/' && FUNCTION_REGEXP.test(editor.document.getLine(currentLineNr+2))) {
 						editor.setCursorPos(currentLineNr+2,0);
+						handleDocBlock();
 					}
-					handleDocBlock();
 				} else {
 					handleEnter(editor);
 				}
