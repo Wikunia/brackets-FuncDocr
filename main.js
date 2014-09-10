@@ -471,9 +471,9 @@ define(function (require, exports, module) {
     // Key Handling (Enter,Tab)
     // =========================================================================
 
-
 	/**
-	 * Handle the key Event jump to handleEnter or handleTab (inside a doc block) or do nothing
+	 * Handle the key Event jump to handleEnter,handleTab (inside a doc block)
+	 * or generate a docblock if the currentLine is /** or do nothing
 	 * @param {keyEvent} $event jQuery key event
 	 * @param {editor}   editor Brackets editor
 	 * @param {Object}   event  key event
@@ -488,8 +488,31 @@ define(function (require, exports, module) {
 			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
 				handleTab(editor,event,docBlockPos);
 			} else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) {	// no docBlock needed (check it later)
-				handleEnter(editor);
+				// Check for /** in the current line
+				var currentLineNr = editor.getCursorPos().line;
+				// line - 1 because this triggers after the enter
+				if (DOCBLOCK_START.test(editor.document.getLine(currentLineNr-1))) {
+					// currentLine is empty or *
+					var currentLine = editor.document.getLine(currentLineNr);
+					var nextLine = editor.document.getLine(currentLineNr+1);
+					if (FUNCTION_REGEXP.test(nextLine) && FUNCTION_REGEXP.test(nextLine)) {
+						editor.setCursorPos(currentLineNr+1,0);
+						// delete /** and the next empty row
+						editor.document.replaceRange(
+							'',
+							{line:currentLineNr-1,ch:0},
+							{line:currentLineNr+1,ch:0}
+						);
+					} else  // for reasonable comments by Peter Flynn
+						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
+						editor.setCursorPos(currentLineNr+2,0);
+					}
+					handleDocBlock();
+				} else {
+					handleEnter(editor);
+				}
 			}
+
 		}
 		hintOpen = CodeHintManager.isOpen();
 	}
