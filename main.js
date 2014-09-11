@@ -205,6 +205,9 @@ define(function (require, exports, module) {
 		var commentTags = lines.join('\n').split('@');
 
 		tags.description = commentTags[0].replace(/\n*$/,''); // the first (without @ is the description/summary)
+		if (commentTags.length == 1) {
+			tags.returns = {bool: false};
+		}
 
 		var params = [];
 		for (var i = 1; i < commentTags.length; i++) {
