@@ -54,6 +54,8 @@ define(function (require, exports, module) {
 	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
 	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
+	var TYPEOF_OR_OR 		= /^if\s*\(\s*typeof\s*(.*?)=?==\s+"undefined"\s*\)?\s*(.*?)=(.*)|(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
+	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+"undefined"\s*\)?\s*\?(.*?):(.*)/;
 
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
 	var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
@@ -116,7 +118,7 @@ define(function (require, exports, module) {
             var name = parameters[i].trim();
 
             if (name) {
-                signature.parameters.push({title:name});
+                signature.parameters.push({name:name});
             }
         }
 
@@ -132,6 +134,16 @@ define(function (require, exports, module) {
 			}
 		}
 
+		if (signature.parameters.length > 0) {
+			// check if parameters are optional (default values)
+			signature.parameters = checkParamsOptional(codeTypes.code,signature.parameters);
+			for (var i = 0; i < signature.parameters.length; i++) {
+				if (!("title" in signature.parameters[i])){
+					signature.parameters[i].title = signature.parameters[i].name;
+				}
+			}
+		}
+
 
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
@@ -142,13 +154,16 @@ define(function (require, exports, module) {
 			if (docSignature.description != '') {
 				signature.description = docSignature.description;
 			}
-			var parameterTitles = [];
-			signature.parameters.forEach(function(o){parameterTitles.push(o.title);} );
 
 			for (var i = 0; i < docSignature.parameters.length; i++) {
-				var paramIndex;
-				if ((paramIndex = parameterTitles.indexOf(docSignature.parameters[i].title)) >= 0) {
-					signature.parameters[paramIndex] = docSignature.parameters[i];
+				var paramIndex = signature.parameters.keyIndexOf('name',docSignature.parameters[i].name);
+				if (paramIndex >= 0) {
+					if (signature.parameters[paramIndex].optional && signature.parameters[paramIndex].default !== false) {
+						signature.parameters[paramIndex].description = docSignature.parameters[i].description;
+						signature.parameters[paramIndex].type		 = docSignature.parameters[i].type;
+					} else {
+						signature.parameters[paramIndex] = docSignature.parameters[i];
+					}
 				}
 			}
 			if (signature.returns.bool) {
@@ -260,7 +275,19 @@ define(function (require, exports, module) {
 						}
 					break;
 				}
-				param.title			= param_parts[2];
+				param.name		= param_parts[2];
+				param.title 	= param_parts[2];
+				param.optional 	= false;
+				if (param.name.charAt(0) == '[' && param.name.charAt(param.name.length-1) == ']') {
+					// remove '[' beginning and ']' at the end
+					param.name = param.name.substr(1,param.name.length-2);
+					var split = param.name.split('=');
+					param.name = split[0];
+					param.optional = true;
+					if (split.length > 1) {
+						param.default = split[1];
+					}
+				}
 				param.description   = param_parts[3];
 				for (var j = 4; j < param_parts.length; j++) {
 					param.description += delimiters[j-1] + param_parts[j];
@@ -338,6 +365,7 @@ define(function (require, exports, module) {
         // Add the parameter lines
         for (var i = 0; i < signature.parameters.length; i++) {
             var parameter = signature.parameters[i];
+
 			parameter.description 	= parameter.description	? parameter.description.split(/\n/) : ['[[Description]]'];
 
 			// get the right spaces for title and type
@@ -900,7 +928,7 @@ define(function (require, exports, module) {
 		var line = 0;
 
 		for (var i = 0; i < params.length; i++) {
-			paramsFirstChars.push(params[i].title.charAt(0));
+			paramsFirstChars.push(params[i].name.charAt(0));
 		}
 
 		var paramIndex;
@@ -914,8 +942,8 @@ define(function (require, exports, module) {
 				if (delimiter == '') {
 					while (paramIndex >= 0) { // parameters can start with the same char
 						// check for currentParameter.
-						if (code.substr(i,params[paramIndex].title.length+1) == params[paramIndex].title+'.') {
-							var functionAfterParam = /^([a-z]*)(\()?/i.exec(code.substr(i+params[paramIndex].title.length+1));
+						if (code.substr(i,params[paramIndex].name.length+1) == params[paramIndex].name+'.') {
+							var functionAfterParam = /^([a-z]*)(\()?/i.exec(code.substr(i+params[paramIndex].name.length+1));
 							// check for properties
 							if (!functionAfterParam[2]) {
 								if (PROPERTIES.indexOf(functionAfterParam[1]) === -1) {
@@ -1030,6 +1058,80 @@ define(function (require, exports, module) {
 		return false;
 	}
 
+	/**
+	 * Check if params are optional and have default values
+	 * @param   {String} code   code of the function
+	 * @param   {Object} params all parameters of the function
+	 * @returns {Object} expand the parameter object. New keys for some params: 'optional' (bool),'default',.title
+	 */
+	function checkParamsOptional(code,params) {
+		// delete code before first { (function definition) and last }
+		// => only code inside the function
+		code = code.substr(code.indexOf('{')+1);
+		code = code.substring(0,code.lastIndexOf('}'));
+		// split the code into expressions (';')
+		var expressions = code.split(';');
+		var i = 0;
+		// first expression needs to include 'typeof'
+		while (/[^0-9a-z_]typeof[^0-9a-z_]/i.test(expressions[i]) || /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/i.test(expressions[i])) {
+			expressions[i] = expressions[i].trim();
+			// TYPEOF_OR_OR =>
+			// if typeof variable =?== undefined variable = default
+			// or variable = variable || default
+			var match 		= TYPEOF_OR_OR.exec(expressions[i]);
+			// TYPEOF_SHORT =>
+			// variable = typeof variable === "undefined" ? variable : default
+			// or variable = typeof variable !== "undefined" ? default : variable
+			var matchShort 	= TYPEOF_SHORT.exec(expressions[i]);
+			if (match) {
+				// variable = variable || default
+				if (match[4]) {
+					match = match.slice(4);
+				} else { // if typeof variable =?== undefined variable = default
+					match = match.slice(1,4);
+				}
+				for (var j = 0; j < match.length; j++) {
+					match[j] = match[j].trim();
+				}
+				// variable == variable
+				if (match[0] == match[1]) {
+					var variable = match[0];
+					var paramIndex = params.keyIndexOf('name',variable);
+					if (paramIndex >= 0) {
+						params[paramIndex].optional = true;
+						params[paramIndex].default = match[2];
+						params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
+					}
+				}
+			} else if (matchShort) {
+				// variable = typeof variable === "undefined" ? variable : default
+				// or variable = typeof variable !== "undefined" ? default : variable
+				match = matchShort;
+				for (var j = 0; j < match.length; j++) {
+					match[j] = match[j].trim();
+				}
+				// variable == variable
+				if (match[1] == match[2] && (match[1] == match[4] || match[1] == match[5])) {
+					var variable = match[1];
+					var paramIndex = params.keyIndexOf('name',variable);
+					if (paramIndex >= 0) {
+						params[paramIndex].optional = true;
+						if (match[3] == '!') {
+							params[paramIndex].default = match[4];
+						} else {
+							params[paramIndex].default = match[5];
+						}
+						params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
+					}
+				}
+			}
+			i++;
+		}
+
+
+		return params;
+	}
+
 
 	String.prototype.regexIndexOf = function(regex, startpos) {
 		var indexOf = this.substring(startpos || 0).search(regex);
@@ -1051,6 +1153,25 @@ define(function (require, exports, module) {
         $(newEditor).on('keyEvent', handleKey);
     }
 
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////     Prototypes    //////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * Find the position of an needle in an array of objects for a special key
+	 * @param   {String} key    key which should be checked against the needle
+	 * @param   {String} needle string that should be array[i][key]
+	 * @returns {Number} return the positon i if needle was found otherwise -1
+	 */
+	Array.prototype.keyIndexOf = function(key,needle) {
+		var array = this;
+		for (var i = 0; i < array.length; i++) {
+			if (array[i][key] == needle) {
+				return i;
+			}
+		}
+		return -1;
+	}
 
 	AppInit.appReady(function () {
 		require('hints');
