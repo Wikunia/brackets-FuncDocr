@@ -54,8 +54,9 @@ define(function (require, exports, module) {
 	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
 	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
-	var TYPEOF_OR_OR 		= /^if\s*\(\s*typeof\s*(.*?)=?==\s+"undefined"\s*\)?\s*(.*?)=(.*)|(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
+	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+"undefined"\s*\)?\s*(.*?)=(.*)/;
 	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+"undefined"\s*\)?\s*\?(.*?):(.*)/;
+	var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
 
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
 	var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
@@ -1075,39 +1076,36 @@ define(function (require, exports, module) {
 		// first expression needs to include 'typeof'
 		while (/[^0-9a-z_]typeof[^0-9a-z_]/i.test(expressions[i]) || /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/i.test(expressions[i])) {
 			expressions[i] = expressions[i].trim();
-			// TYPEOF_OR_OR =>
-			// if typeof variable =?== undefined variable = default
-			// or variable = variable || default
-			var match 		= TYPEOF_OR_OR.exec(expressions[i]);
+			// TYPEOF_LONG =>
+			// if typeof variable ===? undefined variable = default
+			var matchLong 	= TYPEOF_LONG.exec(expressions[i]);
 			// TYPEOF_SHORT =>
 			// variable = typeof variable === "undefined" ? variable : default
 			// or variable = typeof variable !== "undefined" ? default : variable
 			var matchShort 	= TYPEOF_SHORT.exec(expressions[i]);
-			if (match) {
-				// variable = variable || default
-				if (match[4]) {
-					match = match.slice(4);
-				} else { // if typeof variable =?== undefined variable = default
-					match = match.slice(1,4);
-				}
-				for (var j = 0; j < match.length; j++) {
+			// or variable = variable || default
+			var matchOr		= OR_DEFAULT.exec(expressions[i]);
+			var match;
+			if (matchLong || matchOr) {
+				match = matchLong ? matchLong : matchOr;
+				for (var j = 1; j < match.length; j++) {
 					match[j] = match[j].trim();
 				}
 				// variable == variable
-				if (match[0] == match[1]) {
-					var variable = match[0];
+				if (match[1] == match[2]) {
+					var variable = match[1];
 					var paramIndex = params.keyIndexOf('name',variable);
 					if (paramIndex >= 0) {
 						params[paramIndex].optional = true;
-						params[paramIndex].default = match[2];
+						params[paramIndex].default = match[3];
 						params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
 					}
 				}
 			} else if (matchShort) {
-				// variable = typeof variable === "undefined" ? variable : default
-				// or variable = typeof variable !== "undefined" ? default : variable
+				// variable = typeof variable === "undefined" ? default : variable
+				// or variable = typeof variable !== "undefined" ? variable : default
 				match = matchShort;
-				for (var j = 0; j < match.length; j++) {
+				for (var j = 1; j < match.length; j++) {
 					match[j] = match[j].trim();
 				}
 				// variable == variable
@@ -1117,9 +1115,9 @@ define(function (require, exports, module) {
 					if (paramIndex >= 0) {
 						params[paramIndex].optional = true;
 						if (match[3] == '!') {
-							params[paramIndex].default = match[4];
-						} else {
 							params[paramIndex].default = match[5];
+						} else {
+							params[paramIndex].default = match[4];
 						}
 						params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
 					}

@@ -11,13 +11,15 @@ A brackets extension to generate JS/PHPDocs for your functions.
 
 The extension will provide a function documentation:
 
+Natural way: `/**` + Enter
+
+![](https://cloud.githubusercontent.com/assets/4931746/4238565/c820925e-39d9-11e4-998b-693c25b3a5b1.gif)
+
 With shortcut:
 
 ![](https://cloud.githubusercontent.com/assets/4931746/4141317/f9303404-33ac-11e4-8e3c-c72925b4e550.gif)
 
-Natural way: `/**` + Enter
 
-![](https://cloud.githubusercontent.com/assets/4931746/4238565/c820925e-39d9-11e4-998b-693c25b3a5b1.gif)
 
 `[[Description]]` will be selected so you can start to type. To jump to the next `[[tag]]` you can use `Tab` or jump to the last with `Shift-Tab`. The indenting updates on a tab jump (live indenting).
 
@@ -26,6 +28,11 @@ You will get hints for the `[[Type]]` tag.
 ![Type hints](https://cloud.githubusercontent.com/assets/4931746/3998983/b3eba9ba-294c-11e4-988b-4330735635fd.png)
 
 Have fun and stay tuned!
+
+## v0.5.3
+### Default values!
+
+
 
 ## v0.5.0
 + It's possible to generate the doc block with `/**` + Enter. You only need to type `/**` in the line above the function declaration and use enter to start the documentation.
