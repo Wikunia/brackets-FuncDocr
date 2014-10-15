@@ -32,7 +32,7 @@ Have fun and stay tuned!
 ## v0.5.3
 ### Default values!
 
-
+![Default values](https://cloud.githubusercontent.com/assets/4931746/4649697/18f8859c-548d-11e4-9f86-9a9a669b71f2.gif)
 
 ## v0.5.0
 + It's possible to generate the doc block with `/**` + Enter. You only need to type `/**` in the line above the function declaration and use enter to start the documentation.
