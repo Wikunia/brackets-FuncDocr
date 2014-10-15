@@ -1066,6 +1066,22 @@ define(function (require, exports, module) {
 	 * @returns {Object} expand the parameter object. New keys for some params: 'optional' (bool),'default',.title
 	 */
 	function checkParamsOptional(code,params) {
+		if (langId === "php") {
+			code = code.substring(code.indexOf('(')+1,code.indexOf(')'));
+			var parameters = code.split(',');
+			for (var i = 0; i < parameters.length; i++) {
+				params[i].title = params[i].name;
+				var paramParts = params[i].name.split('=');
+				if (paramParts.length == 2) {
+					params[i].title		= '['+params[i].title+']';
+					params[i].optional 	= true;
+					params[i].default 	= paramParts[1];
+					params[i].name 		= paramParts[0];
+				}
+			}
+			return params;
+		}
+
 		// delete code before first { (function definition) and last }
 		// => only code inside the function
 		code = code.substr(code.indexOf('{')+1);
