@@ -40,6 +40,7 @@ define(function (require, exports, module) {
 	var Dialogs				= brackets.getModule('widgets/Dialogs');
 	var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
 	var Menus          		= brackets.getModule("command/Menus");
+	var MainViewManager		= brackets.getModule("view/MainViewManager");
 
 	var prefDialogHTML		= require('text!dialog/prefs.html');
 
@@ -508,7 +509,7 @@ define(function (require, exports, module) {
 			CommandManager.execute(Commands.SHOW_CODE_HINTS);
 		}
 
-        EditorManager.focusEditor();
+       	MainViewManager.focusActivePane();
     }
 
 
@@ -1200,6 +1201,9 @@ define(function (require, exports, module) {
 		return -1;
 	}
 
+	/**
+	 * Open the preference dialog where the user can change the shortcut
+	 */
 	function openPrefDialog() {
 		var dialog = Dialogs.showModalDialogUsingTemplate(prefDialogHTML),
 			$dialog	= dialog.getElement();
