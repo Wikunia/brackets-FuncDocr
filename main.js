@@ -520,9 +520,7 @@ define(function (require, exports, module) {
 	/**
 	 * Handle the key Event jump to handleEnter,handleTab (inside a doc block)
 	 * or generate a docblock if the currentLine is /** or do nothing
-	 * @param {keyEvent} $event jQuery key event
-	 * @param {editor}   editor Brackets editor
-	 * @param {Object}   event  key event
+	 * @param {Object} event key event
 	 */
 	function handleKey(event) {
 		var editor  = EditorManager.getCurrentFullEditor();
