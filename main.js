@@ -37,9 +37,14 @@ define(function (require, exports, module) {
     var EditorManager       = brackets.getModule('editor/EditorManager');
     var KeyBindingManager   = brackets.getModule('command/KeyBindingManager');
     var Menus               = brackets.getModule('command/Menus');
+	var Dialogs				= brackets.getModule('widgets/Dialogs');
+	var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
+	var Menus          		= brackets.getModule("command/Menus");
+
+	var prefDialogHTML		= require('text!dialog/prefs.html');
 
     var COMMAND_ID          = 'funcdocr';
-    var COMMAND_ID_TAB      = 'funcdocrTab';
+    var COMMAND_ID_SETTINGS = 'funcdocr.settings';
     var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)/;
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -58,6 +63,8 @@ define(function (require, exports, module) {
 	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+"undefined"\s*\)?\s*\?(.*?):(.*)/;
 	var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
 
+	var SHORTCUT_REGEX		= /^((Ctrl|Alt|Shift)-){1,3}\S$/i;
+
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
 	var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
 							   'localeCompare', 'match', 'normalize', 'repeat', 'replace', 'search',
@@ -75,6 +82,12 @@ define(function (require, exports, module) {
         'livescript'   : ['{', '}'],
         'php'          : ['', '']
     };
+
+	var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
+	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
+	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
+
+	var existingKeyBindings;
 
 	var langId;
 	var hintOpen = false; // hintManager not open
@@ -714,7 +727,7 @@ define(function (require, exports, module) {
     // Tab Handling
     // =========================================================================
 
-    /**
+	/**
      * Handle the tab key when within a doc block
      * @param {editor} editor      Brackets editor
      * @param {event}  event       keyEvent
@@ -1187,12 +1200,50 @@ define(function (require, exports, module) {
 		return -1;
 	}
 
+	function openPrefDialog() {
+		var dialog = Dialogs.showModalDialogUsingTemplate(prefDialogHTML),
+			$dialog	= dialog.getElement();
+
+		$dialog.find("#shortcut").val(_prefs.get('shortcut')).on('input', function () {
+			if (!SHORTCUT_REGEX.test($(this).val())) {
+				$dialog.find("#shortcutError").html('Please enter a valid shortcut!');
+				$dialog.find("#prefs_save_btn").prop('disabled', true);
+			} else if ($(this).val() in existingKeyBindings) {
+				$dialog.find("#shortcutError").html('This shortcut is already in use!');
+				$dialog.find("#prefs_save_btn").prop('disabled', true);
+			} else {
+				$dialog.find("#shortcutError").html('');
+				$dialog.find("#prefs_save_btn").prop('disabled', false);
+			}
+		});
+
+		dialog.done(function (id) {
+			if (id === 'save') {
+				var shortcut = $dialog.find("#shortcut").val();
+				KeyBindingManager.addBinding(COMMAND_ID, shortcut);
+				_prefs.set('shortcut', shortcut);
+				_prefs.set('shortcutMac', shortcut);
+			}
+		});
+
+	}
+
 	AppInit.appReady(function () {
 		require('hints');
 
 		CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
-		KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Alt-D');
-		KeyBindingManager.addBinding(COMMAND_ID, 'Ctrl-Shift-D', 'mac');
+		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
+		existingKeyBindings = KeyBindingManager.getKeymap();
+		console.log(existingKeyBindings);
+		if (_prefs.get('shortcut') in existingKeyBindings) {
+			openPrefDialog();
+		} else {
+			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcut'));
+			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcutMac'), 'mac');
+		}
+
+		var menu = Menus.getMenu(Menus.AppMenuBar.FILE_MENU);
+		menu.addMenuItem(COMMAND_ID_SETTINGS);
 
 		$(EditorManager).on('activeEditorChange', updateEditorListeners);
 		$(EditorManager.getCurrentFullEditor()).on('keyEvent', handleKey);
