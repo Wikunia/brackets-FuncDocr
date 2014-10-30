@@ -524,12 +524,13 @@ define(function (require, exports, module) {
 	 * @param {editor}   editor Brackets editor
 	 * @param {Object}   event  key event
 	 */
-	function handleKey($event,editor,event) {
-		langId  	  = editor.getLanguageForSelection().getId();
+	function handleKey(event) {
+		var editor  = EditorManager.getCurrentFullEditor();
+		langId  	= editor.getLanguageForSelection().getId();
 		var selection = editor.getSelection();
 		var backward  = event.shiftKey;
-		if (event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB ||
-			event.type === 'keyup'  && event.keyCode === KeyEvent.DOM_VK_RETURN) {
+		if ((event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) ||
+			(event.type === 'keyup' && event.keyCode === KeyEvent.DOM_VK_RETURN)) {
 			var docBlockPos = insideDocBlock(selection,backward);
 			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
 				handleTab(editor,event,docBlockPos);
@@ -1166,20 +1167,6 @@ define(function (require, exports, module) {
 		return (indexOf >= 0) ? (indexOf + (startpos || 0)) : indexOf;
 	}
 
-	// =========================================================================
-    // Initialization
-    // =========================================================================
-
-    /**
-     * Add/Remove listeners when the editor changes
-     * @param {object} event     Event object
-     * @param {editor} newEditor Brackets editor
-     * @param {editor} oldEditor Brackets editor
-     */
-    function updateEditorListeners(event, newEditor, oldEditor) {
-        $(oldEditor).off('keyEvent', handleKey);
-        $(newEditor).on('keyEvent', handleKey);
-    }
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////     Prototypes    //////////////////////////////////
@@ -1238,7 +1225,6 @@ define(function (require, exports, module) {
 		CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
 		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
 		existingKeyBindings = KeyBindingManager.getKeymap();
-		console.log(existingKeyBindings);
 		if (_prefs.get('shortcut') in existingKeyBindings) {
 			openPrefDialog();
 		} else {
@@ -1249,8 +1235,11 @@ define(function (require, exports, module) {
 		var menu = Menus.getMenu(Menus.AppMenuBar.FILE_MENU);
 		menu.addMenuItem(COMMAND_ID_SETTINGS);
 
-		$(EditorManager).on('activeEditorChange', updateEditorListeners);
-		$(EditorManager.getCurrentFullEditor()).on('keyEvent', handleKey);
+		var editorHolder = $("#editor-holder")[0];
+		if (editorHolder) {
+        	editorHolder.addEventListener("keydown", handleKey, true);
+        	editorHolder.addEventListener("keyup", handleKey, true);
+		}
 
 		var docrHints = new DocrHint();
 		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
