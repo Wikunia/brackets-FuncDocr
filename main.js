@@ -39,7 +39,7 @@ define(function (require, exports, module) {
     var Menus               = brackets.getModule('command/Menus');
 	var Dialogs				= brackets.getModule('widgets/Dialogs');
 	var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
-	var Menus          		= brackets.getModule("command/Menus");
+	//var Menus          		= brackets.getModule("command/Menus");
 	var MainViewManager		= brackets.getModule("view/MainViewManager");
 
 	var prefDialogHTML		= require('text!dialog/prefs.html');
@@ -512,7 +512,55 @@ define(function (require, exports, module) {
        	MainViewManager.focusActivePane();
     }
 
-
+	/**
+	 * returns the indent inside a doc
+	 * @param   {String} line 
+	 * @returns {String} indent string contains tab or space
+	 */
+	function getInsideIndent(line)
+	{
+		var docKey = '', /*outsideIndent,*/ insideIndent = '', 
+			m = /^([\t ]*)([\/\*]+)([\t ]*).*/.exec(line);		
+		
+		if (m && m.length >= 2) {
+			if (line.indexOf('*/') >= 0) {
+				return '';			
+			}			
+			//outsideIndent = m[1]
+			docKey = m[2];
+			insideIndent = (m[3]);				
+				if (docKey.indexOf('*/')>=0) {
+				return '';
+			}
+			if (docKey.indexOf('/*')>=0) {
+				return ' *' + insideIndent;
+			}
+			if (docKey.indexOf('*')>=0) {
+				return '*' + insideIndent;
+			}
+			if (docKey.indexOf('//') >= 0) {
+				return /*outsideIndent+*/'//' + insideIndent;
+			}	
+		}
+		return '';
+	}
+	
+	
+	/**
+	 * handling comment block's behavior
+	 * @param {String} line   
+	 * @param {Object} editor 
+	 */
+	function handleBlockIndent(line, editor)
+	{
+		var indent = getInsideIndent(line);
+		if(indent.length>0)
+		{
+			var position = editor.getCursorPos();
+			editor._codeMirror.replaceRange(indent, position);
+		}
+	}
+	
 	// =========================================================================
     // Key Handling (Enter,Tab)
     // =========================================================================
@@ -522,13 +570,16 @@ define(function (require, exports, module) {
 	 * or generate a docblock if the currentLine is /** or do nothing
 	 * @param {Object} event key event
 	 */
-	function handleKey(event) {
-		var editor  = EditorManager.getCurrentFullEditor();
-		langId  	= editor.getLanguageForSelection().getId();
-		var selection = editor.getSelection();
-		var backward  = event.shiftKey;
+		
+	function handleKey(event) {		
 		if ((event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) ||
 			(event.type === 'keyup' && event.keyCode === KeyEvent.DOM_VK_RETURN)) {
+			
+			var editor  = EditorManager.getCurrentFullEditor();
+			langId  	= editor.getLanguageForSelection().getId();
+			var selection = editor.getSelection();
+			var backward  = event.shiftKey;
+			
 			var docBlockPos = insideDocBlock(selection,backward);
 			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
 				handleTab(editor,event,docBlockPos);
@@ -536,7 +587,9 @@ define(function (require, exports, module) {
 				// Check for /** in the current line
 				var currentLineNr = editor.getCursorPos().line;
 				// line - 1 because this triggers after the enter
-				if (DOCBLOCK_START.test(editor.document.getLine(currentLineNr-1))) {
+				var prevLine=editor.document.getLine(currentLineNr-1);
+				if (DOCBLOCK_START.test(prevLine)) {
+					
 					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var nextLine = editor.document.getLine(currentLineNr+1);
@@ -553,9 +606,14 @@ define(function (require, exports, module) {
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/' && FUNCTION_REGEXP.test(editor.document.getLine(currentLineNr+2))) {
 						editor.setCursorPos(currentLineNr+2,0);
 						handleDocBlock();
+					} 
+					else {
+						// (/**) there isn't top of functions so we handle behavior of other comment blocks that starts by /**
+						handleBlockIndent(prevLine, editor);
 					}
-				} else {
-					handleEnter(editor);
+				} else { 
+					// not /** detected										
+					handleBlockIndent(prevLine, editor);					
 				}
 			}
 
