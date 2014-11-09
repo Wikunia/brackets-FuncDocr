@@ -307,7 +307,7 @@ define(function (require, exports, module) {
 				for (var j = 4; j < param_parts.length; j++) {
 					param.description += delimiters[j-1] + param_parts[j];
 				}
-				param.description = param.description.replace(/\n*$/,'');
+				param.description = (typeof param.description === "undefined") ? '' : param.description.replace(/\n*$/,'');
 				params.push(param);
 			}
 
