@@ -35,6 +35,8 @@ define(function (require, exports, module) {
 	var Commands            = brackets.getModule("command/Commands");
     var KeyEvent            = brackets.getModule('utils/KeyEvent');
     var EditorManager       = brackets.getModule('editor/EditorManager');
+    var DocumentManager     = brackets.getModule('document/DocumentManager');
+	var JSUtils             = brackets.getModule("language/JSUtils");
     var KeyBindingManager   = brackets.getModule('command/KeyBindingManager');
     var Menus               = brackets.getModule('command/Menus');
 	var Dialogs				= brackets.getModule('widgets/Dialogs');
@@ -46,6 +48,7 @@ define(function (require, exports, module) {
 
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
+
     var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)/;
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -99,6 +102,11 @@ define(function (require, exports, module) {
 
     /**
      * Handle the shortcut to create a doc block
+     * @
+     */
+
+    /**
+     * [[Description]]
      */
     function handleDocBlock() {
         insertDocBlock(generateDocBlock(getFunctionSignature()));
@@ -199,6 +207,7 @@ define(function (require, exports, module) {
 
 	/**
 	 * Get the existing doc tags
+	 * uses {@link getCurrentDocTags getCurrentDocTags}
 	 * @param   {document} document brackets document
 	 * @param   {Object}   position current cursor position
 	 * @returns {Object}   get startLine of the doc and the tags (.signature)
@@ -232,9 +241,9 @@ define(function (require, exports, module) {
 			lines[i] = lines[i].replace(/^\*/,'').trim(); // delete * at the beginning and trim line again
 		}
 
-		var commentTags = lines.join('\n').split('@');
+		var commentTags = lines.join('\n').split(/[\n]\s*@/);
 
-		tags.description = commentTags[0].replace(/\n*$/,''); // the first (without @ is the description/summary)
+		tags.description = commentTags[0]; // the first (without @ is the description/summary)
 		if (commentTags.length == 1) {
 			tags.returns = {bool: false};
 		}
@@ -307,7 +316,7 @@ define(function (require, exports, module) {
 				for (var j = 4; j < param_parts.length; j++) {
 					param.description += delimiters[j-1] + param_parts[j];
 				}
-				param.description = (typeof param.description === "undefined") ? '' : param.description.replace(/\n*$/,'');
+				param.description = (typeof param.description === "undefined") ? '' : param.description;
 				params.push(param);
 			}
 
@@ -505,8 +514,7 @@ define(function (require, exports, module) {
 		var nextField = getNextField({start:startPosition,end:startPosition},false,docBlockPos);
 
         if (nextField) {
-            editor.setSelection(nextField[0], nextField[1]); // set the selection
-			CommandManager.execute(Commands.SHOW_CODE_HINTS);
+        	setSelection(editor,nextField[0],nextField[1]);
 		}
 
        	MainViewManager.focusActivePane();
@@ -529,7 +537,7 @@ define(function (require, exports, module) {
 		var backward  = event.shiftKey;
 		if ((event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) ||
 			(event.type === 'keyup' && event.keyCode === KeyEvent.DOM_VK_RETURN)) {
-			var docBlockPos = insideDocBlock(selection,backward);
+			var docBlockPos = insideDocBlock(getPosition(selection,backward));
 			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
 				handleTab(editor,event,docBlockPos);
 			} else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) {	// no docBlock needed (check it later)
@@ -583,86 +591,6 @@ define(function (require, exports, module) {
             position = position === selection.start ? selection.end : selection.start;
         }
 		return position;
-	}
-
-	/**
-	 * Check if the current selection is inside a doc block
-	 * @param   {Object}         selection current selection
-	 * @param   {Boolean}        backward  true => back
-	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside
-	 */
-	function insideDocBlock(selection,backward) {
-		var editor    = EditorManager.getCurrentFullEditor();
-        var document  = editor.document;
-        var lineCount = editor.lineCount();
-
-        // Determine the cursor position based on the selection
-        var position = getPosition(selection,backward);
-
-        // Snap to the word boundary
-        var currentLine = document.getLine(position.line);
-
-        while (currentLine.charAt(position.ch).match(DOCBLOCK_BOUNDARY)) {
-            position.ch -= 1;
-
-            if(position.ch < 0) {
-                position.ch = 0;
-                break;
-            }
-            else if(position.ch >= currentLine.length) {
-                position.ch = currentLine.length - 1;
-                break;
-            }
-        }
-
-        // Search for the start of the doc block
-        var start = null;
-
-        for (var i = position.line; i >= 0; --i) {
-            var line = document.getLine(i);
-
-            // Check for the start of the doc block
-            if (line.match(DOCBLOCK_START)) {
-                start = i;
-                break;
-            }
-
-            // Make sure we're still in a doc block
-            if (!line.match(DOCBLOCK_MIDDLE) && !line.match(DOCBLOCK_END)) {
-                break;
-            }
-        }
-
-        // If no start was found, we're not in a doc block
-        if (start === null) {
-            return false;
-        }
-
-        // Search for the end of the doc block
-        var end = null;
-
-        for (var i = position.line; i < lineCount; ++i) {
-            var line = document.getLine(i);
-
-            // Check for the end of the doc block
-            if (line.match(DOCBLOCK_END)) {
-                end = i;
-                break;
-            }
-
-            // Make sure we're still in a doc block
-            if (!line.match(DOCBLOCK_START) && !line.match(DOCBLOCK_MIDDLE)) {
-                break;
-            }
-        }
-
-        // If no end was found, we're not in a doc block
-        if (end === null) {
-            return false;
-        }
-
-		// we are in a doc block
-		return {start: start, end: end};
 	}
 
 
@@ -754,8 +682,7 @@ define(function (require, exports, module) {
 		var nextField = getNextField(selection, backward, docBlockPos);
 
 		if (nextField) {
-			editor.setSelection(nextField[0], nextField[1]); // set the selection
-			CommandManager.execute(Commands.SHOW_CODE_HINTS);
+			setSelection(editor,nextField[0],nextField[1]);
 			event.preventDefault();
 		}
     }
@@ -929,7 +856,7 @@ define(function (require, exports, module) {
 	 * Try to guess the parameter types
 	 * @param   {Object}         editor   Brackets editor
 	 * @param   {Object}         position current position (.ch,.line)
-	 * @param   {Object}         params   function parameters
+	 * @param   {Array|Object}   params   function parameters
 	 * @returns {Object|Boolean} .code = code of function, .returns (Boolean) true if function returns, .paramTypes (Array) Type of parameter
 	 */
 	function getFunctionCodeTypes(editor,position,params) {
@@ -1214,7 +1141,106 @@ define(function (require, exports, module) {
 				_prefs.set('shortcutMac', shortcut);
 			}
 		});
+	}
 
+	/**
+	 * Check if the current selection is inside a doc block
+	 * @param   {Object}         position the current position
+	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside
+	 */
+	function insideDocBlock(position) {
+		var editor    = EditorManager.getCurrentFullEditor();
+        var document  = editor.document;
+        var lineCount = editor.lineCount();
+
+        // Snap to the word boundary
+        var currentLine = document.getLine(position.line);
+
+        while (currentLine.charAt(position.ch).match(DOCBLOCK_BOUNDARY)) {
+            position.ch -= 1;
+
+            if(position.ch < 0) {
+                position.ch = 0;
+                break;
+            }
+            else if(position.ch >= currentLine.length) {
+                position.ch = currentLine.length - 1;
+                break;
+            }
+        }
+
+        // Search for the start of the doc block
+        var start = null;
+
+        for (var i = position.line; i >= 0; --i) {
+            var line = document.getLine(i);
+
+            // Check for the start of the doc block
+            if (line.match(DOCBLOCK_START)) {
+                start = i;
+                break;
+            }
+
+            // Make sure we're still in a doc block
+            if (!line.match(DOCBLOCK_MIDDLE) && !line.match(DOCBLOCK_END)) {
+                break;
+            }
+        }
+
+        // If no start was found, we're not in a doc block
+        if (start === null) {
+            return false;
+        }
+
+        // Search for the end of the doc block
+        var end = null;
+
+        for (var i = position.line; i < lineCount; ++i) {
+            var line = document.getLine(i);
+
+            // Check for the end of the doc block
+            if (line.match(DOCBLOCK_END)) {
+                end = i;
+                break;
+            }
+
+            // Make sure we're still in a doc block
+            if (!line.match(DOCBLOCK_START) && !line.match(DOCBLOCK_MIDDLE)) {
+                break;
+            }
+        }
+
+        // If no end was found, we're not in a doc block
+        if (end === null) {
+            return false;
+        }
+
+		// we are in a doc block
+		return {start: start, end: end};
+	}
+
+	/**
+	 * Contains a list of information about functions for a single document.
+	 * @return {?Array.<FileLocation>}
+	 */
+	function createFunctionList() {
+		var doc = DocumentManager.getCurrentDocument();
+		if (!doc) {
+			return;
+		}
+
+		var functionList = [];
+		var docText = doc.getText();
+		var lines = docText.split("\n");
+		var functions = JSUtils.findAllMatchingFunctionsInText(docText, "*");
+		return functions;
+	}
+
+	function setSelection(editor,posStart,posEnd) {
+		editor.setSelection(posStart, posEnd);
+		CommandManager.execute(Commands.FILE_SAVE).done(function() {
+			CommandManager.execute(Commands.SHOW_CODE_HINTS);
+		});
 	}
 
 	AppInit.appReady(function () {
@@ -1239,7 +1265,12 @@ define(function (require, exports, module) {
         	editorHolder.addEventListener("keyup", handleKey, true);
 		}
 
-		var docrHints = new DocrHint();
+		var docrHints = new DocrHint({
+			insideDocBlock:insideDocBlock,createFunctionList:createFunctionList,
+			getFunctionCodeTypes:getFunctionCodeTypes,setSelection:setSelection
+		});
 		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
 	});
+
+
 });
