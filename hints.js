@@ -94,13 +94,15 @@ DocrHint.prototype.getHints = function (implicitChar) {
 			hints = [];
 			var match = /{\s*@$/.exec(line);
 			if (match) {
-				console.log(match);
 				this.deleteFirstNChars = 1;
 				hints.push("@link [[Link]] [[Description]]}");
-
 			} else {
 				this.deleteFirstNChars = 1;
-				hints.push("{@link [[Link]] [[Description]]}");
+				if (this.editor.getLanguageForSelection().getId() == "php") {
+					hints.push("@link [[Link]] [[Description]]");
+				} else {
+					hints.push("{@link [[Link]] [[Description]]}");
+				}
 			}
 			this.boolSetSelection = true;
 			break;
