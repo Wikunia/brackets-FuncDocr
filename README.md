@@ -29,6 +29,13 @@ You will get hints for the `[[Type]]` tag.
 
 Have fun and stay tuned!
 
+## v0.6.0
+## @link tags
+
+![linkTag](https://cloud.githubusercontent.com/assets/4931746/5079729/78a7cc3e-6eb7-11e4-8502-7718bf7c0c97.gif)
+
+Easy way to add @link tags to your docs!
+
 ## v0.5.3
 ### Default values!
 
