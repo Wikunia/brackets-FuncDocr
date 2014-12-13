@@ -69,6 +69,11 @@ define(function (require, exports, module) {
 
 	var SHORTCUT_REGEX		= /^((Ctrl|Alt|Shift)-){1,3}\S$/i;
 
+	// reactjs 
+	var REACTJS_FUNCTION    = /React.createClass\(\{/;
+	var REACTJS_PROPS	    = /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
+	
+	
 	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
 	var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
 							   'localeCompare', 'match', 'normalize', 'repeat', 'replace', 'search',
@@ -102,11 +107,6 @@ define(function (require, exports, module) {
 
     /**
      * Handle the shortcut to create a doc block
-     * @
-     */
-
-    /**
-     * [[Description]]
      */
     function handleDocBlock() {
         insertDocBlock(generateDocBlock(getFunctionSignature()));
@@ -127,47 +127,24 @@ define(function (require, exports, module) {
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
 
         var signature   = {};
-
-        if (!matches) {
-            return null;
-        }
-
-        signature.indentation = INDENTATION_REGEXP.exec(currentLine)[0];
+		// defaults
+		signature.indentation = INDENTATION_REGEXP.exec(currentLine)[0];
         signature.parameters  = [];
-
-        var parameters = matches[1].split(',');
-
-        for (var i = 0; i < parameters.length; ++i) {
-            var name = parameters[i].trim();
-
-            if (name) {
-                signature.parameters.push({name:name});
-            }
-        }
-
-		// default
 		signature.returns = {bool: false};
 
-		// get the function code and returns (Object)
-		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
-		if (codeTypes) {
-			signature.returns = codeTypes.returns;
-			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
-				signature.parameters[i].type = codeTypes.paramTypes[i];
-			}
+		console.log('funcmatches: ', matches);
+        if (!matches) {
+			// try other function types
+			signature = getReactSignature(signature,editor,position,currentLine);			
+        } else {
+			signature = getNormalSignature(signature,editor,position,matches);
 		}
-
-		if (signature.parameters.length > 0) {
-			// check if parameters are optional (default values)
-			signature.parameters = checkParamsOptional(codeTypes.code,signature.parameters);
-			for (var i = 0; i < signature.parameters.length; i++) {
-				if (!("title" in signature.parameters[i])){
-					signature.parameters[i].title = signature.parameters[i].name;
-				}
-			}
+		if (!signature) {
+			return null;
 		}
-
-
+		console.log('signature: ',signature);	
+			
+     
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
 			var docStartLine = doc.startLine;
@@ -204,6 +181,73 @@ define(function (require, exports, module) {
         return signature;
     }
 
+	function getNormalSignature(signature,editor,position,matches) {
+		var parameters 	= matches[1].split(',');
+
+        for (var i = 0; i < parameters.length; ++i) {
+            var name = parameters[i].trim();
+
+            if (name) {
+                signature.parameters.push({name:name});
+            }
+        }		
+
+		// get the function code and returns (Object)
+		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
+		if (codeTypes) {
+			signature.returns = codeTypes.returns;
+			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
+				signature.parameters[i].type = codeTypes.paramTypes[i];
+			}
+		}
+
+		if (signature.parameters.length > 0) {
+			// check if parameters are optional (default values)
+			signature.parameters = checkParamsOptional(codeTypes.code,signature.parameters);
+			for (var i = 0; i < signature.parameters.length; i++) {
+				if (!("title" in signature.parameters[i])){
+					signature.parameters[i].title = signature.parameters[i].name;
+				}
+			}
+		}
+
+		
+	}
+	
+	
+    function getReactSignature(signature,editor,position,currentLine) {
+        var matches     = REACTJS_FUNCTION.exec(currentLine);		
+		console.log('matches: ', matches);
+		if (!matches) {
+			return false;	
+		}
+		
+		// get the props as parameters
+		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
+		console.log('codeTypes: ', codeTypes);
+		
+		var props;
+		var aProps 		= [];
+		var paramNames  = [];
+		while ((props = REACTJS_PROPS.exec(codeTypes.code)) !== null) {
+            if (aProps.indexOf(props[1]) < 0) {
+                signature.parameters.push({name:props[1], title: props[1]});
+				aProps.push(props[1]);
+				paramNames.push({name:'this.props.'+props[1]});
+            }
+		}
+		var codeTypes = getFunctionCodeTypes(editor,position,paramNames);
+		console.log('codeTypes: ', codeTypes);
+		if (codeTypes) {
+			signature.returns = codeTypes.returns;
+			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
+				signature.parameters[i].type = codeTypes.paramTypes[i];
+			}
+		}
+		
+		console.log('signature: ',signature);
+		return signature;
+	}
 
 	/**
 	 * Get the existing doc tags
@@ -861,7 +905,6 @@ define(function (require, exports, module) {
 	 */
 	function getFunctionCodeTypes(editor,position,params) {
 		var code = editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
-		var length = code.length;
 		var delimiter = false;
 		var bracketCount = 0;
 		var returns = {bool:false,type:false};
@@ -871,13 +914,13 @@ define(function (require, exports, module) {
 		for (var i = 0; i < params.length; i++) {
 			paramsFirstChars.push(params[i].name.charAt(0));
 		}
-
+		
 		var paramIndex;
 		var paramTypes = [];
 
-		for (var i = 0; i < length; i++) {
+		for (var i = 0; i < code.length; i++) {
 			var char = code.charAt(i);
-
+			
 			// get code types
 			if (langId != "php" && ((paramIndex = paramsFirstChars.indexOf(char)) >= 0)) {
 				if (delimiter == '') {
