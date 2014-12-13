@@ -210,8 +210,7 @@ define(function (require, exports, module) {
 				}
 			}
 		}
-
-		
+		return signature;
 	}
 	
 	
@@ -244,8 +243,7 @@ define(function (require, exports, module) {
 				signature.parameters[i].type = codeTypes.paramTypes[i];
 			}
 		}
-		
-		console.log('signature: ',signature);
+		signature.returns = {bool: true, type: "HTML"};
 		return signature;
 	}
 
@@ -592,7 +590,8 @@ define(function (require, exports, module) {
 					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var nextLine = editor.document.getLine(currentLineNr+1);
-					if (FUNCTION_REGEXP.test(nextLine) && FUNCTION_REGEXP.test(nextLine)) {
+					console.log('nextLine: '+nextLine);
+					if (FUNCTION_REGEXP.test(nextLine) || REACTJS_FUNCTION.test(nextLine)) {
 						editor.setCursorPos(currentLineNr+1,0);
 						// delete /** and the next empty row
 						editor.document.replaceRange(
@@ -601,10 +600,15 @@ define(function (require, exports, module) {
 							{line:currentLineNr+1,ch:0}
 						);
 						handleDocBlock();
-					} else  // for reasonable comments by Peter Flynn
-						if (currentLine.trim() == '*' && nextLine.trim() == '*/' && FUNCTION_REGEXP.test(editor.document.getLine(currentLineNr+2))) {
-						editor.setCursorPos(currentLineNr+2,0);
-						handleDocBlock();
+					} else { // for reasonable comments by Peter Flynn
+						var flynnNextLine = editor.document.getLine(currentLineNr+2);
+						console.log('flynnNextLine: '+flynnNextLine);
+						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
+							if (FUNCTION_REGEXP.test(flynnNextLine) || REACTJS_FUNCTION.test(flynnNextLine)) {
+								editor.setCursorPos(currentLineNr+2,0);
+								handleDocBlock();
+							}
+						}
 					}
 				} else {
 					handleEnter(editor);
