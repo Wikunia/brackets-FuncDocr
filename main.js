@@ -132,7 +132,6 @@ define(function (require, exports, module) {
         signature.parameters  = [];
 		signature.returns = {bool: false};
 
-		console.log('funcmatches: ', matches);
         if (!matches) {
 			// try other function types
 			signature = getReactSignature(signature,editor,position,currentLine);			
@@ -142,7 +141,6 @@ define(function (require, exports, module) {
 		if (!signature) {
 			return null;
 		}
-		console.log('signature: ',signature);	
 			
      
 		if (docExists) { // try to update the doc block (parameter added or deleted)
@@ -216,14 +214,12 @@ define(function (require, exports, module) {
 	
     function getReactSignature(signature,editor,position,currentLine) {
         var matches     = REACTJS_FUNCTION.exec(currentLine);		
-		console.log('matches: ', matches);
 		if (!matches) {
 			return false;	
 		}
 		
 		// get the props as parameters
 		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
-		console.log('codeTypes: ', codeTypes);
 		
 		var props;
 		var aProps 		= [];
@@ -236,7 +232,6 @@ define(function (require, exports, module) {
             }
 		}
 		var codeTypes = getFunctionCodeTypes(editor,position,paramNames);
-		console.log('codeTypes: ', codeTypes);
 		if (codeTypes) {
 			signature.returns = codeTypes.returns;
 			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
@@ -590,7 +585,6 @@ define(function (require, exports, module) {
 					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var nextLine = editor.document.getLine(currentLineNr+1);
-					console.log('nextLine: '+nextLine);
 					if (FUNCTION_REGEXP.test(nextLine) || REACTJS_FUNCTION.test(nextLine)) {
 						editor.setCursorPos(currentLineNr+1,0);
 						// delete /** and the next empty row
@@ -602,7 +596,6 @@ define(function (require, exports, module) {
 						handleDocBlock();
 					} else { // for reasonable comments by Peter Flynn
 						var flynnNextLine = editor.document.getLine(currentLineNr+2);
-						console.log('flynnNextLine: '+flynnNextLine);
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
 							if (FUNCTION_REGEXP.test(flynnNextLine) || REACTJS_FUNCTION.test(flynnNextLine)) {
 								editor.setCursorPos(currentLineNr+2,0);
