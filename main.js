@@ -63,8 +63,8 @@ define(function (require, exports, module) {
 	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
 	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
-	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+"undefined"\s*\)?\s*(.*?)=(.*)/;
-	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+"undefined"\s*\)?\s*\?(.*?):(.*)/;
+	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["|']undefined["|']\s*\)?\s*(.*?)=(.*)/;
+	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["|']undefined["|']\s*\)?\s*\?(.*?):(.*)/;
 	var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
 
 	var SHORTCUT_REGEX		= /^((Ctrl|Alt|Shift)-){1,3}\S$/i;
