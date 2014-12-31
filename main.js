@@ -49,7 +49,7 @@ define(function (require, exports, module) {
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
-    var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)/;
+    var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)/;
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
@@ -123,9 +123,10 @@ define(function (require, exports, module) {
         var document    = editor.document;
         var lineBefore  = document.getLine(position.line-1);
         var currentLine = document.getLine(position.line);
-        var matches     = FUNCTION_REGEXP.exec(currentLine);
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
 
+		var matches     = FUNCTION_REGEXP.exec(currentLine);
+		
         var signature   = {};
 		// defaults
 		signature.indentation = INDENTATION_REGEXP.exec(currentLine)[0];
@@ -136,6 +137,19 @@ define(function (require, exports, module) {
 			// try other function types
 			signature = getReactSignature(signature,editor,position,currentLine);			
         } else {
+			// support multiline function definitions
+			var lastMatches = ['',''];
+			var lineCounter = 1;
+			var lastCurrentLine = currentLine;
+			while (matches[1].length > lastMatches[1].length) {
+				currentLine  	 = lastCurrentLine;
+				lastCurrentLine += document.getLine(position.line+lineCounter);
+				lastMatches  	 = matches;
+				matches      	 = FUNCTION_REGEXP.exec(lastCurrentLine);
+				lineCounter++;
+			}
+			matches = lastMatches;		
+			
 			signature = getNormalSignature(signature,editor,position,matches);
 		}
 		if (!signature) {
