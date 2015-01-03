@@ -64,6 +64,7 @@ define(function (require, exports, module) {
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
     var DOCBLOCK_START      = /^\s*\/\*\*/;
     var DOCBLOCK_MIDDLE     = /^\s*\*/;
+    var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*\s*$/;
     var DOCBLOCK_END        = /^\s*\*\//;
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
@@ -595,7 +596,8 @@ define(function (require, exports, module) {
 		var selection = editor.getSelection();
 		var backward  = event.shiftKey;
 		if ((event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) ||
-			(event.type === 'keyup' && event.keyCode === KeyEvent.DOM_VK_RETURN)) {
+			(event.type === 'keyup' && (event.keyCode === KeyEvent.DOM_VK_RETURN || 
+                                        event.keyCode === KeyEvent.DOM_VK_BACK_SPACE))) {
 			var docBlockPos = insideDocBlock(getPosition(selection,backward));
 			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
 				handleTab(editor,event,docBlockPos);
@@ -628,7 +630,24 @@ define(function (require, exports, module) {
 				} else {
 					handleEnter(editor);
 				}
-			}
+			} else if (event.keyCode === KeyEvent.DOM_VK_BACK_SPACE && !hintOpen) {
+                // Handle backspace of entire line, keeping cursor within doc block
+                var currentLineNr = editor.getCursorPos().line;
+                var currentLine = editor.document.getLine(currentLineNr);
+
+                // Using DOCBLOCK_MIDDLE_EMPTY, because we only want to remove lines
+                // that are empty.
+                // Need to add a space to the end, because backspace just deleted it
+                if (DOCBLOCK_MIDDLE_EMPTY.test(currentLine + " ")) {
+                    var lastLine = editor.document.getLine(currentLineNr-1);
+                    editor.document.replaceRange(
+							'',
+							{line:currentLineNr,ch:0},
+							{line:currentLineNr+1,ch:0}
+						);
+                    editor.setCursorPos(currentLineNr-1, lastLine.length);
+                }
+            }
 
 		}
 		hintOpen = CodeHintManager.isOpen();
