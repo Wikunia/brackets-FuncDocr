@@ -45,15 +45,6 @@ define(function (require, exports, module) {
 	var MainViewManager		= brackets.getModule("view/MainViewManager");
 
 	var prefDialogHTML		= require('text!dialog/prefs.html');
-    
-    // Load documentation definitions
-    var DOC_DEFINITIONS = {
-        default: JSON.parse(require('text!definitions/default.json')),
-        javascript: JSON.parse(require('text!definitions/JSDoc.json')),
-        php: JSON.parse(require('text!definitions/php.json'))
-    };
-    
-    DOC_DEFINITIONS.coffeescript = DOC_DEFINITIONS.javascript;
 
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
@@ -1325,9 +1316,9 @@ define(function (require, exports, module) {
 	}
 
 	AppInit.appReady(function () {
-		require('hints');
-
-		CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
+        var DocrHint = require('hints');
+		
+        CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
 		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
 		existingKeyBindings = KeyBindingManager.getKeymap();
 		if (_prefs.get('shortcut') in existingKeyBindings) {
@@ -1348,8 +1339,7 @@ define(function (require, exports, module) {
 
 		var docrHints = new DocrHint({
 			insideDocBlock:insideDocBlock,createFunctionList:createFunctionList,
-			getFunctionCodeTypes:getFunctionCodeTypes,setSelection:setSelection,
-            docDefinitions: DOC_DEFINITIONS
+			getFunctionCodeTypes:getFunctionCodeTypes,setSelection:setSelection
 		});
 
 		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
