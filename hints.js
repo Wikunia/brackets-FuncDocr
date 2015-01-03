@@ -13,7 +13,6 @@ function DocrHint(importFuncs) {
 	});
 }
 
-
 /**
  * Checks, if it is possible to give hints inside the current docblock.
  * @param   {editor}  editor       current brackets editor
@@ -93,17 +92,27 @@ DocrHint.prototype.getHints = function (implicitChar) {
 			var line = this.editor.document.getRange({line:this.pos.line,ch:0},this.pos);
 			hints = [];
 			var match = /{\s*@$/.exec(line);
+            
 			if (match) {
-				this.deleteFirstNChars = 1;
-				hints.push("@link [[Link]] [[Description]]}");
+				this.deleteFirstNChars = 2;
 			} else {
 				this.deleteFirstNChars = 1;
-				if (this.editor.getLanguageForSelection().getId() == "php") {
-					hints.push("@link [[Link]] [[Description]]");
-				} else {
-					hints.push("{@link [[Link]] [[Description]]}");
-				}
-			}
+            }
+            
+            var language = this.editor.getLanguageForSelection().getId();
+            var docs = this.docDefinitions;
+            var definition;
+
+            if (docs[language] === undefined) {
+                definition = docs.default;
+            } else {
+                definition = docs[language];
+            }
+            
+            for (var tag in definition.tags) {
+                hints.push(definition.tags[tag]);
+            }
+			
 			this.boolSetSelection = true;
 			break;
 	}
@@ -155,12 +164,15 @@ DocrHint.prototype.insertHint = function (hint) {
 	// Add some text in our document
 	currentDoc.replaceRange(hint, start, end);
 
-	if (this.boolSetSelection && hint.indexOf("@link") >= 0) {
+    var hintContainsField = /(\[\[[^\]]+\]\])/.exec(hint);
+	if (this.boolSetSelection && hintContainsField) {
 		var match = /\[\[[a-z]+\]\]/i.exec(hint);
 		if (match) {
+            var selectionEnd = this.pos.ch-this.deleteFirstNChars+match.index;
+            var selectionStart = selectionEnd+match[0].length;
 			this.setSelection(this.editor,
-				{line:this.pos.line,ch:this.pos.ch-this.deleteFirstNChars+match.index+match[0].length},
-				{line:this.pos.line,ch:this.pos.ch-this.deleteFirstNChars+match.index});
+				{line:this.pos.line,ch:selectionStart},
+				{line:this.pos.line,ch:selectionEnd});
 		}
 	}
 
