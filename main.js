@@ -570,7 +570,24 @@ define(function (require, exports, module) {
 
        	MainViewManager.focusActivePane();
     }
-
+    
+    // =========================================================================
+    // Click Handling
+    // =========================================================================
+    
+    /**
+     * Handle the click event, allowing selecting of fields within doc block
+     * @param {Object} event click event
+     */
+    function handleClick(event) {
+        var editor  = EditorManager.getCurrentFullEditor();
+		langId  	= editor.getLanguageForSelection().getId();
+		var selection = editor.getSelection();
+		if (event.type === 'dblclick') {
+            var docBlockPos = insideDocBlock(getPosition(selection,false));
+            handleDoubleClick(editor, event, docBlockPos);
+        }
+    }
 
 	// =========================================================================
     // Key Handling (Enter,Tab)
@@ -665,6 +682,38 @@ define(function (require, exports, module) {
         }
 		return position;
 	}
+    
+    /**
+     * Finds the word boundary based on current selection, useful to evaluate current selection.
+     * @param   {Object}   position
+     * @param   {String} Character to find in current line
+     * @returns {Object} Updated position
+     */
+    function getCharacterBoundary(position, char, backwards) {
+        if (backwards === undefined) {
+            backwards = true;
+        }
+        var editor    = EditorManager.getCurrentFullEditor();
+        var document  = editor.document;
+
+        var currentLine = document.getLine(position.line);
+        var boundaryPosition = {};
+        $.extend(boundaryPosition, position);
+
+        while (currentLine.charAt(boundaryPosition.ch) !== char) {
+            boundaryPosition.ch += backwards ? -1 : 1;
+
+            if (boundaryPosition.ch < 0) {
+                boundaryPosition.ch = 0;
+                break;
+            } else if(boundaryPosition.ch >= currentLine.length) {
+                boundaryPosition.ch = currentLine.length - 1;
+                break;
+            }
+        }
+        
+        return boundaryPosition;
+    }
 
 
 	// =========================================================================
@@ -723,6 +772,24 @@ define(function (require, exports, module) {
 			}
 		}
 	}
+    
+    // =========================================================================
+    // Double click Handling
+    // =========================================================================
+    
+    /**
+     * Handle double clicking within a doc block
+     * @param {editor} editor      Brackets editor
+     * @param {event}  event       keyEvent
+     * @param {object} docBlockPos (.start,.end) docBlock line start and end
+     */
+    function handleDoubleClick(editor, event, docBlockPos) {
+        var document = editor.document;
+        var selection = editor.getSelection();
+        var position = getPosition(selection, false);
+
+        selectField(editor, position);
+    } 
 
     // =========================================================================
     // Tab Handling
@@ -1221,25 +1288,12 @@ define(function (require, exports, module) {
 	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside
 	 */
 	function insideDocBlock(position) {
-		var editor    = EditorManager.getCurrentFullEditor();
+        var editor    = EditorManager.getCurrentFullEditor();
         var document  = editor.document;
         var lineCount = editor.lineCount();
 
-        // Snap to the word boundary
-        var currentLine = document.getLine(position.line);
-
-        while (currentLine.charAt(position.ch).match(DOCBLOCK_BOUNDARY)) {
-            position.ch -= 1;
-
-            if(position.ch < 0) {
-                position.ch = 0;
-                break;
-            }
-            else if(position.ch >= currentLine.length) {
-                position.ch = currentLine.length - 1;
-                break;
-            }
-        }
+        // Snap to word boundary
+        position = getCharacterBoundary(position, ' ');
 
         // Search for the start of the doc block
         var start = null;
@@ -1314,6 +1368,35 @@ define(function (require, exports, module) {
 			CommandManager.execute(Commands.SHOW_CODE_HINTS);
 		});
 	}
+    
+    /**
+     * Selects a given field based on the current position in the document
+     * @param {Object}   editor
+     * @param {Object}   position Current position in document
+     */
+    function selectField(editor, position) {
+        var document = editor.document;
+        var currentLine = document.getLine(position.line);
+        // Find start of field
+        var startPosition = getCharacterBoundary(position, '[');
+        // Move to first '['
+        startPosition.ch -= 1;
+        // Verify there are two '['
+        if (currentLine.charAt(startPosition.ch) === '[') {
+            var endPosition = getCharacterBoundary(startPosition, ']', false);
+            endPosition.ch += 1;
+            // Verify there are two ']'
+            if (currentLine.charAt(endPosition.ch) === ']') {
+                // Highlight field as long as cursor is within field
+                if (position.ch >= startPosition.ch && position.ch <= endPosition.ch) {
+                    endPosition.ch += 1;
+                    // Start with endPosition to ensure the selected cursor is at the start of the field
+                    setSelection(editor, endPosition, startPosition);
+                    event.preventDefault(); 
+                }   
+            }
+        }
+    }
 
 	AppInit.appReady(function () {
         var DocrHint = require('hints');
@@ -1335,6 +1418,7 @@ define(function (require, exports, module) {
 		if (editorHolder) {
         	editorHolder.addEventListener("keydown", handleKey, true);
         	editorHolder.addEventListener("keyup", handleKey, true);
+            editorHolder.addEventListener("dblclick", handleClick, true)
 		}
 
 		var docrHints = new DocrHint({
