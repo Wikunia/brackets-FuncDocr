@@ -55,10 +55,10 @@ define(function (require, exports, module) {
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
     var DOCBLOCK_START      = /^\s*\/\*\*/;
     var DOCBLOCK_MIDDLE     = /^\s*\*/;
+    var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*\s*$/;
     var DOCBLOCK_END        = /^\s*\*\//;
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
-	var DOCBLOCK_PAR_OR_RET = /^\s*\* (\s{6,}|@(param|returns?))/;
 	var DOCBLOCK_PAR_LINE 	= /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
 	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
 	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
@@ -570,7 +570,24 @@ define(function (require, exports, module) {
 
        	MainViewManager.focusActivePane();
     }
-
+    
+    // =========================================================================
+    // Click Handling
+    // =========================================================================
+    
+    /**
+     * Handle the click event, allowing selecting of fields within doc block
+     * @param {Object} event click event
+     */
+    function handleClick(event) {
+        var editor  = EditorManager.getCurrentFullEditor();
+		langId  	= editor.getLanguageForSelection().getId();
+		var selection = editor.getSelection();
+		if (event.type === 'dblclick') {
+            var docBlockPos = insideDocBlock(getPosition(selection,false));
+            handleDoubleClick(editor, event, docBlockPos);
+        }
+    }
 
 	// =========================================================================
     // Key Handling (Enter,Tab)
@@ -587,7 +604,8 @@ define(function (require, exports, module) {
 		var selection = editor.getSelection();
 		var backward  = event.shiftKey;
 		if ((event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) ||
-			(event.type === 'keyup' && event.keyCode === KeyEvent.DOM_VK_RETURN)) {
+			(event.type === 'keyup' && (event.keyCode === KeyEvent.DOM_VK_RETURN || 
+                                        event.keyCode === KeyEvent.DOM_VK_BACK_SPACE))) {
 			var docBlockPos = insideDocBlock(getPosition(selection,backward));
 			if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
 				handleTab(editor,event,docBlockPos);
@@ -620,7 +638,24 @@ define(function (require, exports, module) {
 				} else {
 					handleEnter(editor);
 				}
-			}
+			} else if (event.keyCode === KeyEvent.DOM_VK_BACK_SPACE && !hintOpen) {
+                // Handle backspace of entire line, keeping cursor within doc block
+                var currentLineNr = editor.getCursorPos().line;
+                var currentLine = editor.document.getLine(currentLineNr);
+
+                // Using DOCBLOCK_MIDDLE_EMPTY, because we only want to remove lines
+                // that are empty.
+                // Need to add a space to the end, because backspace just deleted it
+                if (DOCBLOCK_MIDDLE_EMPTY.test(currentLine + " ")) {
+                    var lastLine = editor.document.getLine(currentLineNr-1);
+                    editor.document.replaceRange(
+							'',
+							{line:currentLineNr,ch:0},
+							{line:currentLineNr+1,ch:0}
+						);
+                    editor.setCursorPos(currentLineNr-1, lastLine.length);
+                }
+            }
 
 		}
 		hintOpen = CodeHintManager.isOpen();
@@ -647,6 +682,38 @@ define(function (require, exports, module) {
         }
 		return position;
 	}
+    
+    /**
+     * Finds the word boundary based on current selection, useful to evaluate current selection.
+     * @param   {Object}   position
+     * @param   {String} Character to find in current line
+     * @returns {Object} Updated position
+     */
+    function getCharacterBoundary(position, char, backwards) {
+        if (backwards === undefined) {
+            backwards = true;
+        }
+        var editor    = EditorManager.getCurrentFullEditor();
+        var document  = editor.document;
+
+        var currentLine = document.getLine(position.line);
+        var boundaryPosition = {};
+        $.extend(boundaryPosition, position);
+
+        while (currentLine.charAt(boundaryPosition.ch) !== char) {
+            boundaryPosition.ch += backwards ? -1 : 1;
+
+            if (boundaryPosition.ch < 0) {
+                boundaryPosition.ch = 0;
+                break;
+            } else if(boundaryPosition.ch >= currentLine.length) {
+                boundaryPosition.ch = currentLine.length - 1;
+                break;
+            }
+        }
+        
+        return boundaryPosition;
+    }
 
 
 	// =========================================================================
@@ -674,7 +741,7 @@ define(function (require, exports, module) {
 	 * @param {Object} position    current position
 	 */
 	function enterAfter(editor,lastLine,currentLine,position) {
-		if (DOCBLOCK_PAR_OR_RET.test(lastLine)) {
+		if (DOCBLOCK_MIDDLE.test(lastLine)) {
 			// get the correct wrapper ({} for JS or '' for PHP)
 			var wrapper 		= PARAM_WRAPPERS[langId];
 			var paddingRegex 	= new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+([^ ]+\\s+)');
@@ -705,6 +772,24 @@ define(function (require, exports, module) {
 			}
 		}
 	}
+    
+    // =========================================================================
+    // Double click Handling
+    // =========================================================================
+    
+    /**
+     * Handle double clicking within a doc block
+     * @param {editor} editor      Brackets editor
+     * @param {event}  event       keyEvent
+     * @param {object} docBlockPos (.start,.end) docBlock line start and end
+     */
+    function handleDoubleClick(editor, event, docBlockPos) {
+        var document = editor.document;
+        var selection = editor.getSelection();
+        var position = getPosition(selection, false);
+
+        selectField(editor, position);
+    } 
 
     // =========================================================================
     // Tab Handling
@@ -1203,25 +1288,12 @@ define(function (require, exports, module) {
 	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside
 	 */
 	function insideDocBlock(position) {
-		var editor    = EditorManager.getCurrentFullEditor();
+        var editor    = EditorManager.getCurrentFullEditor();
         var document  = editor.document;
         var lineCount = editor.lineCount();
 
-        // Snap to the word boundary
-        var currentLine = document.getLine(position.line);
-
-        while (currentLine.charAt(position.ch).match(DOCBLOCK_BOUNDARY)) {
-            position.ch -= 1;
-
-            if(position.ch < 0) {
-                position.ch = 0;
-                break;
-            }
-            else if(position.ch >= currentLine.length) {
-                position.ch = currentLine.length - 1;
-                break;
-            }
-        }
+        // Snap to word boundary
+        position = getCharacterBoundary(position, ' ');
 
         // Search for the start of the doc block
         var start = null;
@@ -1296,11 +1368,40 @@ define(function (require, exports, module) {
 			CommandManager.execute(Commands.SHOW_CODE_HINTS);
 		});
 	}
+    
+    /**
+     * Selects a given field based on the current position in the document
+     * @param {Object}   editor
+     * @param {Object}   position Current position in document
+     */
+    function selectField(editor, position) {
+        var document = editor.document;
+        var currentLine = document.getLine(position.line);
+        // Find start of field
+        var startPosition = getCharacterBoundary(position, '[');
+        // Move to first '['
+        startPosition.ch -= 1;
+        // Verify there are two '['
+        if (currentLine.charAt(startPosition.ch) === '[') {
+            var endPosition = getCharacterBoundary(startPosition, ']', false);
+            endPosition.ch += 1;
+            // Verify there are two ']'
+            if (currentLine.charAt(endPosition.ch) === ']') {
+                // Highlight field as long as cursor is within field
+                if (position.ch >= startPosition.ch && position.ch <= endPosition.ch) {
+                    endPosition.ch += 1;
+                    // Start with endPosition to ensure the selected cursor is at the start of the field
+                    setSelection(editor, endPosition, startPosition);
+                    event.preventDefault(); 
+                }   
+            }
+        }
+    }
 
 	AppInit.appReady(function () {
-		require('hints');
-
-		CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
+        var DocrHint = require('hints');
+		
+        CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
 		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
 		existingKeyBindings = KeyBindingManager.getKeymap();
 		if (_prefs.get('shortcut') in existingKeyBindings) {
@@ -1317,12 +1418,14 @@ define(function (require, exports, module) {
 		if (editorHolder) {
         	editorHolder.addEventListener("keydown", handleKey, true);
         	editorHolder.addEventListener("keyup", handleKey, true);
+            editorHolder.addEventListener("dblclick", handleClick, true)
 		}
 
 		var docrHints = new DocrHint({
 			insideDocBlock:insideDocBlock,createFunctionList:createFunctionList,
 			getFunctionCodeTypes:getFunctionCodeTypes,setSelection:setSelection
 		});
+
 		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
 	});
 
