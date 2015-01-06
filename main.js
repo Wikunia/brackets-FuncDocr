@@ -1379,7 +1379,9 @@ define(function (require, exports, module) {
 	}
 
 	function setSelection(editor,posStart,posEnd) {
-		editor.setSelection(posStart, posEnd);
+		// center the selection if it's not in the centered area and not at the top
+		// => center only if the next tag is at the bottom
+		editor.setSelection(posStart, posEnd, true, 1);
 		CommandManager.execute(Commands.FILE_SAVE).done(function() {
 			CommandManager.execute(Commands.SHOW_CODE_HINTS);
 		});
