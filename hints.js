@@ -2,7 +2,7 @@
 // Hint Manager
 // =========================================================================
 define(['text!definitions/default.json',
-        'text!definitions/JSDoc.json',
+        'text!definitions/js.json',
         'text!definitions/php.json'],
     function (defaultDef, javascriptDef, phpDef) {
         /**

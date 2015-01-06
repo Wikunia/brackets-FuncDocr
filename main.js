@@ -92,9 +92,9 @@ define(function (require, exports, module) {
         'php'          : ['', '']
     };
 
-	var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
-	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
-	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
+	//var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
+	//_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
+	//_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
 
 	var existingKeyBindings;
 
@@ -434,8 +434,14 @@ define(function (require, exports, module) {
 		var maxParamLength = maxPadding.title;
         var maxTypeLength = maxPadding.type;
 
+		// returns or return
+		var returnDocName = 'returns';
+		if (langId == 'php') {
+			returnDocName = 'return';
+		}
+		
 		// if returns is set show align the types of params and returns
-		var tagRightSpace = signature.returns.bool ? '   ' : ' ';
+		var tagRightSpace = signature.returns.bool ? ' '.times(returnDocName.length-'param'.length+1) : ' ';
 
         // Add the parameter lines
         for (var i = 0; i < signature.parameters.length; i++) {
@@ -469,15 +475,18 @@ define(function (require, exports, module) {
 
         // Add the return line
         if (signature.returns.bool) {
-			signature.returns.description 			= signature.returns.description ? signature.returns.description.split(/\n/) : ['[[Description]]'];
+			signature.returns.description = signature.returns.description ? signature.returns.description.split(/\n/) : ['[[Description]]'];
+			
+		
+			
 			// singleline
 			if (signature.returns.type.length == 1) {
 				signature.returns.typeRightSpace = new Array(maxTypeLength + 2 - signature.returns.type[0].length).join(' ');
-				output.push(' * @returns ' + wrapper[0] + signature.returns.type[0] + wrapper[1] +
+				output.push(' * @' + returnDocName + ' ' + wrapper[0] + signature.returns.type[0] + wrapper[1] +
 							signature.returns.typeRightSpace + signature.returns.description[0]);
 				signature.returns.descriptionIndent = new Array(output[output.length-1].length-2-signature.returns.description[0].length).join(' ');
 			} else { // multiline
-				output.push(' * @returns ' + wrapper[0]);
+				output.push(' * @' + returnDocName + ' ' + wrapper[0]);
 				signature.returns.typeIndent = new Array(output[output.length-1].length-3).join(' ');
 				for (var t = 0; t < signature.returns.type.length; t++) {
 					output.push(' *   ' + signature.returns.typeIndent + signature.returns.type[t]);
@@ -1053,28 +1062,30 @@ define(function (require, exports, module) {
 						returns.bool = true;
 						// try to get the return type
 						var matches = /\s*?([\s\S]*?);/.exec(code.substr(i+7));
-						var returnText = matches[1].trim();
-						var addType;
-						if (returnText == "false" || returnText == "true") {
-							addType = "Boolean";
-							if (returns.type) {
-								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
-							} else returns.type = addType;
-						} else if (returnText.charAt(0) == '{') {
-							addType = "Object";
-							if (returns.type) {
-								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
-							} else returns.type = addType;
-						} else if (returnText.charAt(0) == "[") {
-							addType = "Array";
-							if (returns.type) {
-								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
-							} else returns.type = addType;
-						} else if (returnText.charAt(0) == "'" || returnText.charAt(0) == '"') {
-							addType = "String";
-							if (returns.type) {
-								if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
-							} else returns.type = addType;
+						if (matches) {
+							var returnText = matches[1].trim();
+							var addType;
+							if (returnText == "false" || returnText == "true") {
+								addType = "Boolean";
+								if (returns.type) {
+									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+								} else returns.type = addType;
+							} else if (returnText.charAt(0) == '{') {
+								addType = "Object";
+								if (returns.type) {
+									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+								} else returns.type = addType;
+							} else if (returnText.charAt(0) == "[") {
+								addType = "Array";
+								if (returns.type) {
+									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+								} else returns.type = addType;
+							} else if (returnText.charAt(0) == "'" || returnText.charAt(0) == '"') {
+								addType = "String";
+								if (returns.type) {
+									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
+								} else returns.type = addType;
+							}
 						}
 					}
 					break;
@@ -1231,31 +1242,10 @@ define(function (require, exports, module) {
 		return (indexOf >= 0) ? (indexOf + (startpos || 0)) : indexOf;
 	}
 
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////     Prototypes    //////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-
-	/**
-	 * Find the position of an needle in an array of objects for a special key
-	 * @param   {String} key    key which should be checked against the needle
-	 * @param   {String} needle string that should be array[i][key]
-	 * @returns {Number} return the positon i if needle was found otherwise -1
-	 */
-	Array.prototype.keyIndexOf = function(key,needle) {
-		var array = this;
-		for (var i = 0; i < array.length; i++) {
-			if (array[i][key] == needle) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
 	/**
 	 * Open the preference dialog where the user can change the shortcut
 	 */
-	function openPrefDialog() {
+	/**function openPrefDialog() {
 		var dialog = Dialogs.showModalDialogUsingTemplate(prefDialogHTML),
 			$dialog	= dialog.getElement();
 
@@ -1280,7 +1270,7 @@ define(function (require, exports, module) {
 				_prefs.set('shortcutMac', shortcut);
 			}
 		});
-	}
+	}*/
 
 	/**
 	 * Check if the current selection is inside a doc block
@@ -1398,18 +1388,52 @@ define(function (require, exports, module) {
         }
     }
 
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////     Prototypes    //////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * Find the position of an needle in an array of objects for a special key
+	 * @param   {String} key    key which should be checked against the needle
+	 * @param   {String} needle string that should be array[i][key]
+	 * @returns {Number} return the positon i if needle was found otherwise -1
+	 */
+	Array.prototype.keyIndexOf = function(key,needle) {
+		var array = this;
+		for (var i = 0; i < array.length; i++) {
+			if (array[i][key] == needle) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	
+	/**
+	 * Return the given string*times
+	 * @param   {Number} times nr of repetition
+	 * @returns {String} string,string,...,*times
+	 */
+	String.prototype.times = function(times) {
+		var result = this;
+		for (var i = 1; i < times; i++) {
+			result += this;	
+		}
+		return result;
+	}
+	
+	
 	AppInit.appReady(function () {
         var DocrHint = require('hints');
 		
         CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
-		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
+		//CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
 		existingKeyBindings = KeyBindingManager.getKeymap();
-		if (_prefs.get('shortcut') in existingKeyBindings) {
-			openPrefDialog();
+		/**if (_prefs.get('shortcut') in existingKeyBindings) {
+			//openPrefDialog();
 		} else {
-			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcut'));
-			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcutMac'), 'mac');
-		}
+			// KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcut'));
+			// KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcutMac'), 'mac');
+		}*/
 
 		var menu = Menus.getMenu(Menus.AppMenuBar.FILE_MENU);
 		menu.addMenuItem(COMMAND_ID_SETTINGS);
