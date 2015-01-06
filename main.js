@@ -46,6 +46,13 @@ define(function (require, exports, module) {
 
 	var prefDialogHTML		= require('text!dialog/prefs.html');
 
+	var allDefinitions 		= {
+		 default: 		require('text!definitions/default.json'),
+         javascript: 	require('text!definitions/js.json'),
+         php: 			require('text!definitions/php.json')
+	}
+	var definitions;
+	
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
@@ -92,9 +99,9 @@ define(function (require, exports, module) {
         'php'          : ['', '']
     };
 
-	//var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
-	//_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
-	//_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
+	var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
+	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
+	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
 
 	var existingKeyBindings;
 
@@ -193,6 +200,15 @@ define(function (require, exports, module) {
         return signature;
     }
 
+	
+	/**
+	 * [[Description]]
+	 * @param   {Object}   signature [[Description]]
+	 * @param   {[[Type]]} editor    [[Description]]
+	 * @param   {[[Type]]} position  [[Description]]
+	 * @param   {[[Type]]} matches   [[Description]]
+	 * @returns {[[Type]]} [[Description]]
+	 */
 	function getNormalSignature(signature,editor,position,matches) {
 		var parameters 	= matches[1].split(',');
 
@@ -760,7 +776,9 @@ define(function (require, exports, module) {
 			if (!match) {
 				paddingRegex = new RegExp('^(\\s+)\\*\\s+');
 				match 		 = paddingRegex.exec(lastLine);
-				length 		 = match[0].length-match[1].length;
+				if (match) {
+					length 	 = match[0].length-match[1].length;
+				}
 			} else {
 				length 		 = match[0].length-match[1].length;
 				// there is no title for @returns
@@ -1022,6 +1040,14 @@ define(function (require, exports, module) {
 		
 		var paramIndex;
 		var paramTypes = [];
+		
+		if (allDefinitions[langId] === undefined) {
+			definitions = allDefinitions.default;
+		} else {
+			definitions = allDefinitions[langId];
+		}
+		
+		var types = definitions.types;
 
 		for (var i = 0; i < code.length; i++) {
 			var char = code.charAt(i);
@@ -1036,17 +1062,17 @@ define(function (require, exports, module) {
 							// check for properties
 							if (!functionAfterParam[2]) {
 								if (PROPERTIES.indexOf(functionAfterParam[1]) === -1) {
-									paramTypes[paramIndex] = 'Object';
+									paramTypes[paramIndex] = types["object"];
 								}
 							} else { // check for functions
 								if (STRING_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
-									paramTypes[paramIndex] = 'String';
+									paramTypes[paramIndex] = types["string"];
 								} else if (ARRAY_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
-									paramTypes[paramIndex] = 'Array';
+									paramTypes[paramIndex] = types["array"];
 								} else if (OBJECT_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
-									paramTypes[paramIndex] = 'Object';
+									paramTypes[paramIndex] = types["object"];
 								} else if (REGEXP_FUNCTIONS.indexOf(functionAfterParam[1]) !== -1) {
-									paramTypes[paramIndex] = 'RegExp';
+									paramTypes[paramIndex] = types["regexp"];
 								}
 							}
 						}
@@ -1066,22 +1092,22 @@ define(function (require, exports, module) {
 							var returnText = matches[1].trim();
 							var addType;
 							if (returnText == "false" || returnText == "true") {
-								addType = "Boolean";
+								addType = types["boolean"];
 								if (returns.type) {
 									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
 								} else returns.type = addType;
 							} else if (returnText.charAt(0) == '{') {
-								addType = "Object";
+								addType = types["object"];
 								if (returns.type) {
 									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
 								} else returns.type = addType;
 							} else if (returnText.charAt(0) == "[") {
-								addType = "Array";
+								addType = types["array"]
 								if (returns.type) {
 									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
 								} else returns.type = addType;
 							} else if (returnText.charAt(0) == "'" || returnText.charAt(0) == '"') {
-								addType = "String";
+								addType = types["string"]
 								if (returns.type) {
 									if (returns.type.indexOf(addType) == -1) returns.type += '|'+addType;
 								} else returns.type = addType;
@@ -1245,7 +1271,7 @@ define(function (require, exports, module) {
 	/**
 	 * Open the preference dialog where the user can change the shortcut
 	 */
-	/**function openPrefDialog() {
+	function openPrefDialog() {
 		var dialog = Dialogs.showModalDialogUsingTemplate(prefDialogHTML),
 			$dialog	= dialog.getElement();
 
@@ -1270,7 +1296,7 @@ define(function (require, exports, module) {
 				_prefs.set('shortcutMac', shortcut);
 			}
 		});
-	}*/
+	}
 
 	/**
 	 * Check if the current selection is inside a doc block
@@ -1425,15 +1451,23 @@ define(function (require, exports, module) {
 	AppInit.appReady(function () {
         var DocrHint = require('hints');
 		
+		var defKeys = Object.keys(allDefinitions);
+		for (var i = 0; i < defKeys.length; i++) {
+			allDefinitions[defKeys[i]] = JSON.parse(allDefinitions[defKeys[i]]);
+		}		
+		allDefinitions.coffeescript = allDefinitions.javascript;
+		allDefinitions.livescript 	= allDefinitions.javascript;
+
+		
         CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
-		//CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
+		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
 		existingKeyBindings = KeyBindingManager.getKeymap();
-		/**if (_prefs.get('shortcut') in existingKeyBindings) {
-			//openPrefDialog();
+		if (_prefs.get('shortcut') in existingKeyBindings) {
+			openPrefDialog();
 		} else {
-			// KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcut'));
-			// KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcutMac'), 'mac');
-		}*/
+			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcut'));
+			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcutMac'), 'mac');
+		}
 
 		var menu = Menus.getMenu(Menus.AppMenuBar.FILE_MENU);
 		menu.addMenuItem(COMMAND_ID_SETTINGS);

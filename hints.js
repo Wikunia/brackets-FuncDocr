@@ -14,6 +14,7 @@ define(['text!definitions/default.json',
             php: JSON.parse(phpDef)
         };
         DOC_DEFINITIONS.coffeescript = DOC_DEFINITIONS.javascript;
+        DOC_DEFINITIONS.livescript 	 = DOC_DEFINITIONS.javascript;
     
         var DOCBLOCK_STATIC_HINTS = /(\[\[[^\]]+\<[^\]]+\>\]\])/;
         var DOCBLOCK_FIELD = /(\[\[[^\]]+\]\])/;
@@ -23,6 +24,10 @@ define(['text!definitions/default.json',
          * DocrHint constructor
          * @param {Object} importFuncs functions that will be used in this class and must be imported
          */
+	
+		/**
+		 * 
+		 */
         function DocrHint(importFuncs) {
 
             var docrHintThis = this;
@@ -83,17 +88,22 @@ define(['text!definitions/default.json',
             this.boolSetSelection = false;
             this.deleteFirstNChars = 0;
 
+			var language 	= this.editor.getLanguageForSelection().getId();
+            var definitions = this.docDefinitions;
+			
+			if (definitions[language] === undefined) {
+				definitions = definitions.default;
+			} else {
+				definitions = definitions[language];
+			}
+			
             switch (this.implicitChar) {
             case "[[Type]]":
-                hints = [
-                            "Number",
-                            "String",
-                            "Boolean",
-                            "Array",
-                            "Object",
-                            "RegExp",
-                            "Function"
-                        ];
+				hints = [];
+				var defKeys = Object.keys(definitions.types);
+				for (var i = 0; i < defKeys.length; i++) {
+					hints.push(definitions.types[defKeys[i]]);
+				}	             
                 break;
             case "[[Link]]":
                 var functionList = this.createFunctionList();
@@ -129,18 +139,10 @@ define(['text!definitions/default.json',
                     this.deleteFirstNChars = 1;
                 }
 
-                var language = this.editor.getLanguageForSelection().getId();
-                var docs = this.docDefinitions;
-                var definition;
+              
 
-                if (docs[language] === undefined) {
-                    definition = docs.default;
-                } else {
-                    definition = docs[language];
-                }
-
-                for (var tag in definition.tags) {
-                    hints.push(definition.tags[tag]);
+                for (var tag in definitions.tags) {
+                    hints.push(definitions.tags[tag]);
                 }
 
                 this.boolSetSelection = true;

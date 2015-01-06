@@ -3,5 +3,14 @@
         "link": "{@link [[Link]] [[Description]]}",
         "param": "@param {[[Type]]} [[Description]]",
         "returns": "@returns {[[Type]]} [[Description]]"
-    }
+    },
+	"types": {
+			"number": 	"Number",
+			"string": 	"String",
+			"boolean":	"Boolean",
+			"array": 	"Array",
+			"object": 	"Object",
+			"regexp": 	"RegExp",
+			"function": "Function"
+	}
 }
