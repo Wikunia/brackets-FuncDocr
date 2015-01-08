@@ -29,8 +29,9 @@ You will get hints for the `[[Type]]` tag.
 
 Have fun and stay tuned!
 ## v0.8.0
-![funcdocr0 8 0](https://cloud.githubusercontent.com/assets/4931746/5670323/2c266c44-977f-11e4-8683-6b1923c66edf.gif)
 You can use several JSDoc options to describe your function and you can dblclick on `[[...]]` to edit the tags.
+![funcdocr0 8 0](https://cloud.githubusercontent.com/assets/4931746/5670323/2c266c44-977f-11e4-8683-6b1923c66edf.gif)
+
 
 ## v0.7.0
 Document your react functions!
