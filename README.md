@@ -28,6 +28,14 @@ You will get hints for the `[[Type]]` tag.
 ![Type hints](https://cloud.githubusercontent.com/assets/4931746/3998983/b3eba9ba-294c-11e4-988b-4330735635fd.png)
 
 Have fun and stay tuned!
+## v0.8.0
+![funcdocr0 8 0](https://cloud.githubusercontent.com/assets/4931746/5670323/2c266c44-977f-11e4-8683-6b1923c66edf.gif)
+You can use several JSDoc options to describe your function and you can dblclick on `[[...]]` to edit the tags.
+
+## v0.7.0
+Document your react functions!
+![funcdocr0 7 0](https://cloud.githubusercontent.com/assets/4931746/5670498/a3024bf2-9780-11e4-8bd9-448ef4f04496.gif)
+
 
 ## v0.6.0
 ## @link tags
