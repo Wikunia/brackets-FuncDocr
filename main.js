@@ -72,6 +72,7 @@ define(function (require, exports, module) {
 
 	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["|']undefined["|']\s*\)?\s*(.*?)=(.*)/;
 	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["|']undefined["|']\s*\)?\s*\?(.*?):(.*)/;
+	var TYPEOF_TRUE_SHORT	= /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["|']undefined["|']\s*\)\s*\|\|\s*(\S+)/;
 	var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
 
 	var SHORTCUT_REGEX		= /^((Ctrl|Alt|Shift)-){1,3}\S$/i;
@@ -1208,6 +1209,11 @@ define(function (require, exports, module) {
 		// first expression needs to include 'typeof'
 		while (/[^0-9a-z_]typeof[^0-9a-z_]/i.test(expressions[i]) || /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/i.test(expressions[i])) {
 			expressions[i] = expressions[i].trim();
+			// TYPEOF_SHORT_TRUE => 
+			// variable = typeof variable === "undefined" || variable
+			var matchTrueShort 	= TYPEOF_TRUE_SHORT.exec(expressions[i]);
+			console.log('matchTrueShort: ', matchTrueShort);
+			
 			// TYPEOF_LONG =>
 			// if typeof variable ===? undefined variable = default
 			var matchLong 	= TYPEOF_LONG.exec(expressions[i]);
@@ -1218,7 +1224,21 @@ define(function (require, exports, module) {
 			// or variable = variable || default
 			var matchOr		= OR_DEFAULT.exec(expressions[i]);
 			var match;
-			if (matchLong || matchOr) {
+			if (matchTrueShort) {
+				match = matchTrueShort;
+				for (var j = 1; j < match.length; j++) {
+					match[j] = match[j].trim();
+				}
+				if ((match[1] == match[2]) && (match[1]  == match[3])) {
+					var variable = match[1];
+					var paramIndex = params.keyIndexOf('name',variable);
+					if (paramIndex >= 0) {
+						params[paramIndex].optional = true;
+						params[paramIndex].default = true;
+						params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
+					}
+				}				
+			} else if (matchLong || matchOr) {
 				match = matchLong ? matchLong : matchOr;
 				for (var j = 1; j < match.length; j++) {
 					match[j] = match[j].trim();
