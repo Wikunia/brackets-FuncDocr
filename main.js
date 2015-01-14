@@ -70,15 +70,15 @@ define(function (require, exports, module) {
 	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
 	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
-	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["|']undefined["|']\s*\)?\s*(.*?)=(.*)/;
-	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["|']undefined["|']\s*\)?\s*\?(.*?):(.*)/;
-	var TYPEOF_TRUE_SHORT	= /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["|']undefined["|']\s*\)\s*\|\|\s*(\S+)/;
+	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)?\s*(.*?)=(.*)/;
+	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["']undefined["']\s*\)?\s*\?(.*?):(.*)/;
+	var TYPEOF_TRUE_SHORT	= /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)\s*\|\|\s*(\S+)/;
 	var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
 
 	var SHORTCUT_REGEX		= /^((Ctrl|Alt|Shift)-){1,3}\S$/i;
 
 	// reactjs 
-	var REACTJS_FUNCTION    = /React.createClass\(\{/;
+	var REACTJS_FUNCTION    = /React\.createClass\(\{/;
 	var REACTJS_PROPS	    = /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
 	
 	
