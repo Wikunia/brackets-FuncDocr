@@ -1314,6 +1314,9 @@ define(function (require, exports, module) {
 				KeyBindingManager.addBinding(COMMAND_ID, shortcut);
 				_prefs.set('shortcut', shortcut);
 				_prefs.set('shortcutMac', shortcut);
+				var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
+				menuEdit.removeMenuItem(COMMAND_ID);
+				menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
 			}
 		});
 	}
@@ -1481,8 +1484,9 @@ define(function (require, exports, module) {
 		allDefinitions.livescript 	= allDefinitions.javascript;
 
 		
-        CommandManager.register('funcdocr', COMMAND_ID, handleDocBlock);
+        CommandManager.register('Funcdocr Annotate', COMMAND_ID, handleDocBlock);
 		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
+		
 		existingKeyBindings = KeyBindingManager.getKeymap();
 		if (_prefs.get('shortcut') in existingKeyBindings) {
 			openPrefDialog();
@@ -1491,8 +1495,10 @@ define(function (require, exports, module) {
 			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcutMac'), 'mac');
 		}
 
-		var menu = Menus.getMenu(Menus.AppMenuBar.FILE_MENU);
-		menu.addMenuItem(COMMAND_ID_SETTINGS);
+		var menuView = Menus.getMenu(Menus.AppMenuBar.VIEW_MENU);
+		var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
+		menuView.addMenuItem(COMMAND_ID_SETTINGS);
+		menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
 
 		var editorHolder = $("#editor-holder")[0];
 		if (editorHolder) {
