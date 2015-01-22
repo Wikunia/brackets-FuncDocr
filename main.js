@@ -103,6 +103,7 @@ define(function (require, exports, module) {
 	var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
 	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
 	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
+	_prefs.definePreference('autoindent', 'boolean', true);
 
 	var existingKeyBindings;
 
@@ -749,6 +750,8 @@ define(function (require, exports, module) {
 	/**
      * Handle the enter key when within a doc block
      * @param {editor} editor Brackets editor
+     *                        
+     *                        
      */
     function handleEnter(editor) {
 		var editor  	= EditorManager.getCurrentFullEditor();
@@ -756,7 +759,9 @@ define(function (require, exports, module) {
 		var position	= editor.getCursorPos();
 		var lastLine 	= document.getLine(position.line-1); // before enter
 		var currentLine = document.getLine(position.line); // after enter
-		enterAfter(editor,lastLine,currentLine,position);
+		if (_prefs.get('autoindent')) {
+			enterAfter(editor,lastLine,currentLine,position);
+		}
     }
 
 	/**
@@ -1212,7 +1217,6 @@ define(function (require, exports, module) {
 			// TYPEOF_SHORT_TRUE => 
 			// variable = typeof variable === "undefined" || variable
 			var matchTrueShort 	= TYPEOF_TRUE_SHORT.exec(expressions[i]);
-			console.log('matchTrueShort: ', matchTrueShort);
 			
 			// TYPEOF_LONG =>
 			// if typeof variable ===? undefined variable = default
@@ -1295,6 +1299,10 @@ define(function (require, exports, module) {
 		var dialog = Dialogs.showModalDialogUsingTemplate(prefDialogHTML),
 			$dialog	= dialog.getElement();
 
+		if (!_prefs.get('autoindent')) {
+			$dialog.find("#cbAutoindent").prop('checked',true);	
+		}
+		
 		$dialog.find("#shortcut").val(_prefs.get('shortcut')).on('input', function () {
 			if (!SHORTCUT_REGEX.test($(this).val())) {
 				$dialog.find("#shortcutError").html('Please enter a valid shortcut!');
@@ -1314,6 +1322,8 @@ define(function (require, exports, module) {
 				KeyBindingManager.addBinding(COMMAND_ID, shortcut);
 				_prefs.set('shortcut', shortcut);
 				_prefs.set('shortcutMac', shortcut);
+				
+				_prefs.set('autoindent', !$dialog.find("#cbAutoindent").prop('checked'));
 				var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
 				menuEdit.removeMenuItem(COMMAND_ID);
 				menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
@@ -1324,7 +1334,7 @@ define(function (require, exports, module) {
 	/**
 	 * Check if the current selection is inside a doc block
 	 * @param   {Object}         position the current position
-	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside
+	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside                           
 	 */
 	function insideDocBlock(position) {
         var editor    = EditorManager.getCurrentFullEditor();
