@@ -103,7 +103,7 @@ define(function (require, exports, module) {
 	var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
 	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
 	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
-	_prefs.definePreference('autoindent', 'boolean', true);
+	_prefs.definePreference('autoindent_enter', 'boolean', true);
 
 	var existingKeyBindings;
 
@@ -439,7 +439,7 @@ define(function (require, exports, module) {
             return null;
         }
 
-        var output = ['/**'];
+		var output = ['/**'];
 
 		// add description
 		signature.description = "description" in signature ? signature.description.split(/\n/) : ['[[Description]]'];
@@ -759,7 +759,7 @@ define(function (require, exports, module) {
 		var position	= editor.getCursorPos();
 		var lastLine 	= document.getLine(position.line-1); // before enter
 		var currentLine = document.getLine(position.line); // after enter
-		if (_prefs.get('autoindent')) {
+		if (_prefs.get('autoindent_enter')) {
 			enterAfter(editor,lastLine,currentLine,position);
 		}
     }
@@ -1299,8 +1299,8 @@ define(function (require, exports, module) {
 		var dialog = Dialogs.showModalDialogUsingTemplate(prefDialogHTML),
 			$dialog	= dialog.getElement();
 
-		if (!_prefs.get('autoindent')) {
-			$dialog.find("#cbAutoindent").prop('checked',true);	
+		if (!_prefs.get('autoindent_enter')) {
+			$dialog.find("#cb_autoindent_enter").prop('checked',true);	
 		}
 		
 		$dialog.find("#shortcut").val(_prefs.get('shortcut')).on('input', function () {
@@ -1319,14 +1319,15 @@ define(function (require, exports, module) {
 		dialog.done(function (id) {
 			if (id === 'save') {
 				var shortcut = $dialog.find("#shortcut").val();
-				KeyBindingManager.addBinding(COMMAND_ID, shortcut);
-				_prefs.set('shortcut', shortcut);
-				_prefs.set('shortcutMac', shortcut);
-				
-				_prefs.set('autoindent', !$dialog.find("#cbAutoindent").prop('checked'));
-				var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
-				menuEdit.removeMenuItem(COMMAND_ID);
-				menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
+				if (shortcut != _prefs.get('shortcut') && shortcut != _prefs.get('shortcutMac')) {
+					_prefs.set('shortcut', shortcut);
+					_prefs.set('shortcutMac', shortcut);
+
+					_prefs.set('autoindent_enter', !$dialog.find("#cb_autoindent_enter").prop('checked'));
+					var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
+					menuEdit.removeMenuItem(COMMAND_ID);
+					menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
+				}
 			}
 		});
 	}
@@ -1334,7 +1335,7 @@ define(function (require, exports, module) {
 	/**
 	 * Check if the current selection is inside a doc block
 	 * @param   {Object}         position the current position
-	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside                           
+	 * @returns {Boolean|Object} Object(.start,.end) => inside, false => outside
 	 */
 	function insideDocBlock(position) {
         var editor    = EditorManager.getCurrentFullEditor();
@@ -1497,18 +1498,19 @@ define(function (require, exports, module) {
         CommandManager.register('Funcdocr Annotate', COMMAND_ID, handleDocBlock);
 		CommandManager.register('FuncDocr Settings', COMMAND_ID_SETTINGS, openPrefDialog);
 		
+		var menuView = Menus.getMenu(Menus.AppMenuBar.VIEW_MENU);
+		var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
+		menuView.addMenuItem(COMMAND_ID_SETTINGS);
+		
 		existingKeyBindings = KeyBindingManager.getKeymap();
 		if (_prefs.get('shortcut') in existingKeyBindings) {
 			openPrefDialog();
 		} else {
-			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcut'));
-			KeyBindingManager.addBinding(COMMAND_ID, _prefs.get('shortcutMac'), 'mac');
+			menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
 		}
 
-		var menuView = Menus.getMenu(Menus.AppMenuBar.VIEW_MENU);
-		var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
-		menuView.addMenuItem(COMMAND_ID_SETTINGS);
-		menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
+	
+		
 
 		var editorHolder = $("#editor-holder")[0];
 		if (editorHolder) {
