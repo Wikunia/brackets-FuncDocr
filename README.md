@@ -28,6 +28,12 @@ You will get hints for the `[[Type]]` tag.
 ![Type hints](https://cloud.githubusercontent.com/assets/4931746/3998983/b3eba9ba-294c-11e4-988b-4330735635fd.png)
 
 Have fun and stay tuned!
+
+## You're rich?
+You don't need a second yacht and have some coins to spend? Here I am :)
+
+[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=Wikunia&url=https://github.com/Wikunia/brackets-FuncDocr&title=Brackets-FuncDocr&language=javascript&tags=github&category=software)
+
 ## v0.8.0
 You can use several JSDoc options to describe your function
 and you can dblclick on `[[...]]` to edit the tags.
