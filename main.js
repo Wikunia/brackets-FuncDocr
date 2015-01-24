@@ -219,7 +219,7 @@ define(function (require, exports, module) {
             var name = parameters[i].trim();
 
             if (name) {
-                signature.parameters.push({name:name});
+                signature.parameters.push({name:name,title:name});
             }
         }		
 
@@ -230,15 +230,9 @@ define(function (require, exports, module) {
 			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
 				signature.parameters[i].type = codeTypes.paramTypes[i];
 			}
-		}
-
-		if (signature.parameters.length > 0) {
-			// check if parameters are optional (default values)
-			signature.parameters = checkParamsOptional(codeTypes.code,signature.parameters);
-			for (var i = 0; i < signature.parameters.length; i++) {
-				if (!("title" in signature.parameters[i])){
-					signature.parameters[i].title = signature.parameters[i].name;
-				}
+			if (signature.parameters.length > 0) {
+				// check if parameters are optional (default values)
+				signature.parameters = $.extend([],signature.parameters,checkParamsOptional(codeTypes.code,signature.parameters));
 			}
 		}
 		return signature;
