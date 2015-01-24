@@ -104,6 +104,7 @@ define(function (require, exports, module) {
 	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
 	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
 	_prefs.definePreference('autoindent_enter', 'boolean', true);
+	_prefs.definePreference('autoindent_tab', 'boolean', true);
 
 	var existingKeyBindings;
 
@@ -750,10 +751,8 @@ define(function (require, exports, module) {
 	/**
      * Handle the enter key when within a doc block
      * @param {editor} editor Brackets editor
-     *                        
-     *                        
      */
-    function handleEnter(editor) {
+    function handleEnter(editor,abc,def) {
 		var editor  	= EditorManager.getCurrentFullEditor();
 		var document 	= editor.document;
 		var position	= editor.getCursorPos();
@@ -850,7 +849,10 @@ define(function (require, exports, module) {
 		var tags = getCurrentDocTags(doc.split('\n'));
 		// get the maximum paddings
 		var maxPadding = getMaxPadding(tags);
-		updatePadding(editor,docBlockPos,tags,maxPadding);
+		console.log('tab autoindent: ',_prefs.get('autoindent_tab'));
+		if (_prefs.get('autoindent_tab')) {
+			updatePadding(editor,docBlockPos,tags,maxPadding);
+		}
 
 		var nextField = getNextField(selection, backward, docBlockPos);
 
@@ -1302,6 +1304,10 @@ define(function (require, exports, module) {
 		if (!_prefs.get('autoindent_enter')) {
 			$dialog.find("#cb_autoindent_enter").prop('checked',true);	
 		}
+		if (!_prefs.get('autoindent_tab')) {
+			$dialog.find("#cb_autoindent_tab").prop('checked',true);	
+		}
+		
 		
 		$dialog.find("#shortcut").val(_prefs.get('shortcut')).on('input', function () {
 			if (!SHORTCUT_REGEX.test($(this).val())) {
@@ -1322,12 +1328,13 @@ define(function (require, exports, module) {
 				if (shortcut != _prefs.get('shortcut') && shortcut != _prefs.get('shortcutMac')) {
 					_prefs.set('shortcut', shortcut);
 					_prefs.set('shortcutMac', shortcut);
-
-					_prefs.set('autoindent_enter', !$dialog.find("#cb_autoindent_enter").prop('checked'));
+					
 					var menuEdit = Menus.getMenu(Menus.AppMenuBar.EDIT_MENU);
 					menuEdit.removeMenuItem(COMMAND_ID);
 					menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
 				}
+				_prefs.set('autoindent_enter', !$dialog.find("#cb_autoindent_enter").prop('checked'));
+				_prefs.set('autoindent_tab', !$dialog.find("#cb_autoindent_tab").prop('checked'));	
 			}
 		});
 	}
