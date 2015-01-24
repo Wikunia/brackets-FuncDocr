@@ -75,7 +75,7 @@ define(function (require, exports, module) {
 	var TYPEOF_TRUE_SHORT	= /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)\s*\|\|\s*(\S+)/;
 	var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
 
-	var SHORTCUT_REGEX		= /^((Ctrl|Alt|Shift)-){1,3}\S$/i;
+	var SHORTCUT_REGEX		= /^((Cmd|Ctrl|Alt|Shift)-){1,3}\S$/i;
 
 	// reactjs 
 	var REACTJS_FUNCTION    = /React\.createClass\(\{/;
