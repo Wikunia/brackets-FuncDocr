@@ -5,9 +5,12 @@ define(['text!definitions/default.json',
         'text!definitions/js.json',
         'text!definitions/php.json'],
     function (defaultDef, javascriptDef, phpDef) {
-        /**
-        * Parse Documentation Definitions, used to populate tag suggestions
-        */
+        var DocumentManager     = brackets.getModule('document/DocumentManager');
+		var EditorManager       = brackets.getModule('editor/EditorManager');
+
+		/**
+         * Parse Documentation Definitions, used to populate tag suggestions
+         */
         var DOC_DEFINITIONS = {
             default: JSON.parse(defaultDef),
             javascript: JSON.parse(javascriptDef),
@@ -18,16 +21,16 @@ define(['text!definitions/default.json',
     
         var DOCBLOCK_STATIC_HINTS = /(\[\[[^\]]+\<[^\]]+\>\]\])/;
         var DOCBLOCK_FIELD = /(\[\[[^\]]+\]\])/;
+        var CALLBACK = /\/\*\*[\s\S]*?@callback\s(\S*?)\s[\s\S]*?\*\//g;
+        var FUNC_DEFINITION_ROW = /^[\S\s]*?\*\/([\S\s]*?){/g;
+		var FUNC_DEFINITION	    = /(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?))/;
+		var REGEX_END			= /(\n|\r|$)/;
 
 
         /**
          * DocrHint constructor
          * @param {Object} importFuncs functions that will be used in this class and must be imported
          */
-	
-		/**
-		 * 
-		 */
         function DocrHint(importFuncs) {
 
             var docrHintThis = this;
@@ -58,6 +61,9 @@ define(['text!definitions/default.json',
                 case "[[Link]]":
                     this.implicitChar = "[[Link]]";
                     return true;
+				 case "[[callLink]]":
+                    this.implicitChar = "[[callLink]]";
+                    return true;
                 default:
                     if (implicitChar == '@') {
                         this.removeSelection = true;
@@ -74,13 +80,14 @@ define(['text!definitions/default.json',
         };
 
         /**
+         * @cal
          * Get the hints for a selection
          * uses {@link removeWrongHints	removeWrongHints}
          * @param   {String} implicitChar implicit character
          * @returns {Object} hintManager object
          */
         DocrHint.prototype.getHints = function () {
-            var hints;
+            var hints = [];
             this.match = this.editor.document.getRange(this.pos, this.editor.getCursorPos());
 
             this.hintText = '';
@@ -99,12 +106,27 @@ define(['text!definitions/default.json',
 			
             switch (this.implicitChar) {
             case "[[Type]]":
-				hints = [];
 				var defKeys = Object.keys(definitions.types);
 				for (var i = 0; i < defKeys.length; i++) {
 					hints.push(definitions.types[defKeys[i]]);
-				}	             
+				}
+				// Check for callbacks in the current file
+				var currentDoc = DocumentManager.getCurrentDocument().getText();
+				var callback = null;
+				while((callback = CALLBACK.exec(currentDoc)) != null) {
+					hints.push(callback[1]);
+				}
+
                 break;
+			case "[[callLink]]":
+				var editor 	 	= EditorManager.getCurrentFullEditor();
+				var code 	 	= editor.document.getRange(this.pos,{ch:0,line:editor.lineCount()});
+				var funcNameRow = FUNC_DEFINITION_ROW.exec(code);
+				if (funcNameRow) {
+					var funcName = getFuncName(funcNameRow[1]);
+					hints.push(funcName);
+				}
+				// no break get all link possibilities as well!
             case "[[Link]]":
                 var functionList = this.createFunctionList();
                 var functionSignature = this.getFunctionCodeTypes(this.editor, {
@@ -123,14 +145,14 @@ define(['text!definitions/default.json',
                         otherFuncs.push(functionList[i].name);
                     }
                 }
-                hints = bestFuncs.concat(otherFuncs);
+                hints.push.apply(hints, bestFuncs.concat(otherFuncs));
                 break;
             case "@":
                 var line = this.editor.document.getRange({
                     line: this.pos.line,
                     ch: 0
                 }, this.pos);
-                hints = [];
+
                 var match = /{\s*@$/.exec(line);
 
                 if (match) {
@@ -155,10 +177,7 @@ define(['text!definitions/default.json',
                 if (hintsStartIndex !== -1 && hintsStopIndex !== -1 && hintsStopIndex > hintsStartIndex) {
                     var hintsRaw = this.implicitChar.substring(hintsStartIndex+1, hintsStopIndex);
                     hints = hintsRaw.split('|');
-                } else {
-                    hints = [];
                 }
-                    
                 break;
             }
 
@@ -175,6 +194,54 @@ define(['text!definitions/default.json',
             };
         };
 
+		/**
+		 * Return the function name for a special row
+		 * Array.prototype.abc = function() { => abc
+		 * function cool() { => cool
+		 * @param   {String} row row where the function is declared
+		 * @returns {String} the function name
+		 */
+		function getFuncName(row) {
+			// multiline,caseinsensitive
+			var regex = new RegExp(FUNC_DEFINITION.source + REGEX_END.source , 'mi');
+
+			var matches 		= null;
+			var multicomment 	= null;
+			var match_func 		= false;
+			matches = regex.exec(row);
+			if (matches) {
+				// matches[0] = all
+				// matches[2] = '''function_name''' or matches[4] if matches[2] undefined or matches[5] if both undefined
+				// get the function name
+				// start_pos
+				for (var i = 0; i < matches.length; i++) {
+					if (matches[i]) {
+						matches[i] = matches[i].trim();
+					}
+				}
+				if (matches[2]) {
+					match_func = matches[2].trim();
+				} else if (matches[4]) {
+					match_func = matches[4].trim();
+				} else if (matches[5]) {
+					match_func = matches[5].trim();
+				}  else if (matches[7]) {
+					// prototype or static
+					if (matches[8] == "prototype.") {
+						match_func = matches[9];
+					} else if (!matches[8]) {
+						match_func = matches[9];
+					}
+				}
+				if (match_func) {
+					var end_func_name = match_func.search(/( |\(|$)/);
+					if (end_func_name >= 0) {
+						match_func = match_func.substring(0,end_func_name).trim();
+					}
+				}
+			}
+			return match_func;
+		}
 
         /**
          * Remove hints that doesn't match the current this.match

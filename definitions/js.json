@@ -7,7 +7,7 @@
         "augments": "@augments [[Link]]",
         "author": "@author [[Author]]",
         "borrows": "@borrows [[Property]] as [[Property]]",
-        "callback": "@callback [[Link]]",
+        "callback": "@callback [[callLink]]",
         "class": "@class",
         "classdesc": "@classdesc [[Description]]",
         "constant": "@constant {[[Type]]} [[Description]]",

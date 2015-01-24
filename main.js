@@ -849,7 +849,6 @@ define(function (require, exports, module) {
 		var tags = getCurrentDocTags(doc.split('\n'));
 		// get the maximum paddings
 		var maxPadding = getMaxPadding(tags);
-		console.log('tab autoindent: ',_prefs.get('autoindent_tab'));
 		if (_prefs.get('autoindent_tab')) {
 			updatePadding(editor,docBlockPos,tags,maxPadding);
 		}
@@ -1528,7 +1527,8 @@ define(function (require, exports, module) {
 
 		var docrHints = new DocrHint({
 			insideDocBlock:insideDocBlock,createFunctionList:createFunctionList,
-			getFunctionCodeTypes:getFunctionCodeTypes,setSelection:setSelection
+			getFunctionCodeTypes:getFunctionCodeTypes,setSelection:setSelection,
+			FUNCTION_REGEXP:FUNCTION_REGEXP
 		});
 
 		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
