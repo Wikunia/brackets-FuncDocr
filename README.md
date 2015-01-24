@@ -34,6 +34,11 @@ You don't need a second yacht and have some coins to spend? Here I am :)
 
 [![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=Wikunia&url=https://github.com/Wikunia/brackets-FuncDocr&title=Brackets-FuncDocr&language=javascript&tags=github&category=software)
 
+## v0.8.4
+
+- It's possible to disable the autoindent functionality in the settings menu.
+- `@callback` links will be visible as `[[Type]]` hints.
+
 ## v0.8.0
 You can use several JSDoc options to describe your function
 and you can dblclick on `[[...]]` to edit the tags.
