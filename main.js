@@ -225,6 +225,7 @@ define(function (require, exports, module) {
 
 		// get the function code and returns (Object)
 		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
+		console.log('codeTypes: ', codeTypes);
 		if (codeTypes) {
 			signature.returns = codeTypes.returns;
 			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
@@ -1029,6 +1030,7 @@ define(function (require, exports, module) {
 	 */
 	function getFunctionCodeTypes(editor,position,params) {
 		var code = editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
+		console.log('code: ',code);
 		var delimiter = false;
 		var bracketCount = 0;
 		var returns = {bool:false,type:false};
@@ -1131,7 +1133,7 @@ define(function (require, exports, module) {
 						switch (lookahead) {
 							case '/': // comment
 								var endComment = code.regexIndexOf(/\n/,i);
-								i = endComment > i ? endComment+2 : i;
+								i = endComment > i ? endComment+1 : i;
 								break;
 							case '*': // start of comment (/*)
 								var endComment = code.regexIndexOf(/\*\//,i);
