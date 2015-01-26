@@ -1504,7 +1504,9 @@ define(function (require, exports, module) {
 		
 		existingKeyBindings = KeyBindingManager.getKeymap();
 		if (_prefs.get('shortcut') in existingKeyBindings) {
-			openPrefDialog();
+			if (existingKeyBindings[_prefs.get('shortcut')].commandID != COMMAND_ID) {
+				openPrefDialog();
+			}
 		} else {
 			menuEdit.addMenuItem(COMMAND_ID,[{key: _prefs.get('shortcut')},{key: _prefs.get('shortcutMac'), platform: 'mac'}]);
 		}
