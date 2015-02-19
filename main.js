@@ -56,7 +56,7 @@ define(function (require, exports, module) {
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
-    var FUNCTION_REGEXP     = /function(?:\s+[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)/;
+    var FUNCTION_REGEXP     = /^\s*(?:function\s+)?(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{/;
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
@@ -136,6 +136,8 @@ define(function (require, exports, module) {
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
 
 		var matches     = FUNCTION_REGEXP.exec(currentLine);
+		
+		console.log('matches: ',matches);
 		
         var signature   = {};
 		// defaults

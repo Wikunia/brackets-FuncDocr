@@ -22,8 +22,8 @@ define(['text!definitions/default.json',
         var DOCBLOCK_STATIC_HINTS = /(\[\[[^\]]+\<[^\]]+\>\]\])/;
         var DOCBLOCK_FIELD = /(\[\[[^\]]+\]\])/;
         var CALLBACK = /\/\*\*[\s\S]*?@callback\s(\S*?)\s[\s\S]*?\*\//g;
-        var FUNC_DEFINITION_ROW = /^[\S\s]*?\*\/([\S\s]*?){/g;
-		var FUNC_DEFINITION	    = /(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?))/;
+        var FUNC_DEFINITION_ROW = /^[\S\s]*?\*\/([\S\s]*?{)/g;
+		var FUNC_DEFINITION	    = /^(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?)|([A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{)/;
 		var REGEX_END			= /(\n|\r|$)/;
 
 
@@ -114,9 +114,10 @@ define(['text!definitions/default.json',
 				var currentDoc = DocumentManager.getCurrentDocument().getText();
 				var callback = null;
 				while((callback = CALLBACK.exec(currentDoc)) != null) {
-					hints.push(callback[1]);
+					if (callback[1] != "[[callLink]]") {
+						hints.push(callback[1]);
+					}
 				}
-
                 break;
 			case "[[callLink]]":
 				var editor 	 	= EditorManager.getCurrentFullEditor();
@@ -124,7 +125,9 @@ define(['text!definitions/default.json',
 				var funcNameRow = FUNC_DEFINITION_ROW.exec(code);
 				if (funcNameRow) {
 					var funcName = getFuncName(funcNameRow[1]);
-					hints.push(funcName);
+					if (funcName) {
+						hints.push(funcName);
+					}
 				}
 				// no break get all link possibilities as well!
             case "[[Link]]":
@@ -202,13 +205,15 @@ define(['text!definitions/default.json',
 		 * @returns {String} the function name
 		 */
 		function getFuncName(row) {
+			row = row.trim();
 			// multiline,caseinsensitive
-			var regex = new RegExp(FUNC_DEFINITION.source + REGEX_END.source , 'mi');
+			var regex = new RegExp(FUNC_DEFINITION.source, 'mi');
 
 			var matches 		= null;
 			var multicomment 	= null;
 			var match_func 		= false;
 			matches = regex.exec(row);
+			
 			if (matches) {
 				// matches[0] = all
 				// matches[2] = '''function_name''' or matches[4] if matches[2] undefined or matches[5] if both undefined
@@ -220,11 +225,11 @@ define(['text!definitions/default.json',
 					}
 				}
 				if (matches[2]) {
-					match_func = matches[2].trim();
+					match_func = matches[2];
 				} else if (matches[4]) {
-					match_func = matches[4].trim();
+					match_func = matches[4];
 				} else if (matches[5]) {
-					match_func = matches[5].trim();
+					match_func = matches[5];
 				}  else if (matches[7]) {
 					// prototype or static
 					if (matches[8] == "prototype.") {
@@ -232,6 +237,8 @@ define(['text!definitions/default.json',
 					} else if (!matches[8]) {
 						match_func = matches[9];
 					}
+				} else if(matches[11]) { // ECMAscript 6 function
+					match_func = matches[11];					
 				}
 				if (match_func) {
 					var end_func_name = match_func.search(/( |\(|$)/);
@@ -240,6 +247,7 @@ define(['text!definitions/default.json',
 					}
 				}
 			}
+			
 			return match_func;
 		}
 
