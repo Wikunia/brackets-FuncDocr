@@ -132,36 +132,24 @@ define(function (require, exports, module) {
         var position    = editor.getCursorPos();
         var document    = editor.document;
         var lineBefore  = document.getLine(position.line-1);
-        var currentLine = document.getLine(position.line);
+		var code 		= editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
+        
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
 
-		var matches     = FUNCTION_REGEXP.exec(currentLine);
+		var matches     = FUNCTION_REGEXP.exec(code);
 		
-		console.log('matches: ',matches);
+//		console.log('matches: ',matches);
 		
         var signature   = {};
 		// defaults
-		signature.indentation = INDENTATION_REGEXP.exec(currentLine)[0];
+		signature.indentation = INDENTATION_REGEXP.exec(code)[0];
         signature.parameters  = [];
 		signature.returns = {bool: false};
 
         if (!matches) {
 			// try other function types
-			signature = getReactSignature(signature,editor,position,currentLine);			
+			signature = getReactSignature(signature,editor,position,code);			
         } else {
-			// support multiline function definitions
-			var lastMatches = ['',''];
-			var lineCounter = 1;
-			var lastCurrentLine = currentLine;
-			while (matches[1].length > lastMatches[1].length) {
-				currentLine  	 = lastCurrentLine;
-				lastCurrentLine += document.getLine(position.line+lineCounter);
-				lastMatches  	 = matches;
-				matches      	 = FUNCTION_REGEXP.exec(lastCurrentLine);
-				lineCounter++;
-			}
-			matches = lastMatches;		
-			
 			signature = getNormalSignature(signature,editor,position,matches);
 		}
 		if (!signature) {
@@ -640,8 +628,8 @@ define(function (require, exports, module) {
 				if (DOCBLOCK_START.test(editor.document.getLine(currentLineNr-1))) {
 					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
-					var nextLine = editor.document.getLine(currentLineNr+1);
-					if (FUNCTION_REGEXP.test(nextLine) || REACTJS_FUNCTION.test(nextLine)) {
+					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
+					if (FUNCTION_REGEXP.test(code) || REACTJS_FUNCTION.test(code)) {
 						editor.setCursorPos(currentLineNr+1,0);
 						// delete /** and the next empty row
 						editor.document.replaceRange(
@@ -651,9 +639,10 @@ define(function (require, exports, module) {
 						);
 						handleDocBlock();
 					} else { // for reasonable comments by Peter Flynn
-						var flynnNextLine = editor.document.getLine(currentLineNr+2);
+						var nextLine = editor.document.getLine(currentLineNr+1);
+						var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
-							if (FUNCTION_REGEXP.test(flynnNextLine) || REACTJS_FUNCTION.test(flynnNextLine)) {
+							if (FUNCTION_REGEXP.test(code) || REACTJS_FUNCTION.test(code)) {
 								editor.setCursorPos(currentLineNr+2,0);
 								handleDocBlock();
 							}
