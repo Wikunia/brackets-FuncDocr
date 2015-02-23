@@ -56,7 +56,7 @@ define(function (require, exports, module) {
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
-    var FUNCTION_REGEXP     = /^\s*(?:function\s+)?(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{/;
+    var FUNCTION_REGEXP     = /^\s*(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(?:function\s+)?(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{/;
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
@@ -194,14 +194,6 @@ define(function (require, exports, module) {
     }
 
 	
-	/**
-	 * [[Description]]
-	 * @param   {Object}   signature [[Description]]
-	 * @param   {[[Type]]} editor    [[Description]]
-	 * @param   {[[Type]]} position  [[Description]]
-	 * @param   {[[Type]]} matches   [[Description]]
-	 * @returns {[[Type]]} [[Description]]
-	 */
 	function getNormalSignature(signature,editor,position,matches) {
 		var parameters 	= matches[1].split(',');
 

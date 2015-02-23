@@ -2,7 +2,11 @@
     "tags": {
         "link": "@link [[Link]] [[Description]]",
         "param": "@param [[Type]] [[Description]]",
-        "return": "@return [[Type]] [[Description]]"
+        "return": "@return [[Type]] [[Description]]",
+		"private": "@private",
+ 		"protected": "@protected",
+ 		"public": "@public",
+		"static": "@static"
     },
 	"types": {
 			"number": 	"integer",
