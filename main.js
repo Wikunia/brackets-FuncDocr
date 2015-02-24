@@ -139,8 +139,7 @@ define(function (require, exports, module) {
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
 
 		var matches     = FUNCTION_REGEXP.exec(code);
-				
-//		console.log('matches: ',matches);
+			
 		
         var signature   = {};
 		// defaults
@@ -155,7 +154,6 @@ define(function (require, exports, module) {
 			signature = getNormalSignature(signature,editor,position,matches);
 		}
 		if (!signature) {
-			console.log('return null 2');
 			return null;
 		}
 			
@@ -683,11 +681,9 @@ define(function (require, exports, module) {
 			var func_begin_matches    = FUNCTION_BEGINNING.exec(matches[0]);
 			// check for things like if,for,foreach,while...
 			// func_begin_matches[1] is function or undefined
-			console.log('func_begin_matches: ',func_begin_matches);
 			if (!func_begin_matches[2]) {
 				var noFuncs = ['if','for','foreach','while'];
 				if (noFuncs.indexOf(func_begin_matches[3]) >= 0) {
-					console.log('return null 1');
 					return false;	
 				}
 			}
