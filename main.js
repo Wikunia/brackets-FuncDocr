@@ -57,6 +57,8 @@ define(function (require, exports, module) {
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
     var FUNCTION_REGEXP     = /^\s*(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(?:function\s+)?(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{/;
+	var FUNCTION_BEGINNING	= /^\s*((?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(function\s+)?([A-Za-z\$\_][A-Za-z\$\_0-9]*)?/;
+	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
@@ -137,7 +139,7 @@ define(function (require, exports, module) {
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
 
 		var matches     = FUNCTION_REGEXP.exec(code);
-		
+				
 //		console.log('matches: ',matches);
 		
         var signature   = {};
@@ -145,7 +147,7 @@ define(function (require, exports, module) {
 		signature.indentation = INDENTATION_REGEXP.exec(code)[0];
         signature.parameters  = [];
 		signature.returns = {bool: false};
-
+		
         if (!matches) {
 			// try other function types
 			signature = getReactSignature(signature,editor,position,code);			
@@ -153,10 +155,10 @@ define(function (require, exports, module) {
 			signature = getNormalSignature(signature,editor,position,matches);
 		}
 		if (!signature) {
+			console.log('return null 2');
 			return null;
 		}
 			
-     
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
 			var docStartLine = doc.startLine;
@@ -193,7 +195,6 @@ define(function (require, exports, module) {
         return signature;
     }
 
-	
 	function getNormalSignature(signature,editor,position,matches) {
 		var parameters 	= matches[1].split(',');
 
@@ -621,22 +622,28 @@ define(function (require, exports, module) {
 					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
-					if (FUNCTION_REGEXP.test(code) || REACTJS_FUNCTION.test(code)) {
-						editor.setCursorPos(currentLineNr+1,0);
-						// delete /** and the next empty row
-						editor.document.replaceRange(
-							'',
-							{line:currentLineNr-1,ch:0},
-							{line:currentLineNr+1,ch:0}
-						);
-						handleDocBlock();
+					var func_matches= FUNCTION_REGEXP.exec(code);
+					if (func_matches || REACTJS_FUNCTION.test(code)) {
+						if (deepFunctionCheck(func_matches)) {
+							editor.setCursorPos(currentLineNr+1,0);
+							// delete /** and the next empty row
+							editor.document.replaceRange(
+								'',
+								{line:currentLineNr-1,ch:0},
+								{line:currentLineNr+1,ch:0}
+							);
+							handleDocBlock();
+						}
 					} else { // for reasonable comments by Peter Flynn
 						var nextLine = editor.document.getLine(currentLineNr+1);
 						var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
-							if (FUNCTION_REGEXP.test(code) || REACTJS_FUNCTION.test(code)) {
-								editor.setCursorPos(currentLineNr+2,0);
-								handleDocBlock();
+							var func_matches= FUNCTION_REGEXP.exec(code);
+							if (func_matches || REACTJS_FUNCTION.test(code)) {
+								if (deepFunctionCheck(func_matches)) {
+									editor.setCursorPos(currentLineNr+2,0);
+									handleDocBlock();
+								}
 							}
 						}
 					}
@@ -666,6 +673,28 @@ define(function (require, exports, module) {
 		hintOpen = CodeHintManager.isOpen();
 	}
 
+	/**
+	 * Check if the given match is really a function and not an if or for loop
+	 * @param   {Array}   matches matches generated with FUNCTION_REGEXP
+	 * @returns {Boolean} true => is function, false => is no function
+	 */
+	function deepFunctionCheck(matches) {
+		if (matches) {
+			var func_begin_matches    = FUNCTION_BEGINNING.exec(matches[0]);
+			// check for things like if,for,foreach,while...
+			// func_begin_matches[1] is function or undefined
+			console.log('func_begin_matches: ',func_begin_matches);
+			if (!func_begin_matches[2]) {
+				var noFuncs = ['if','for','foreach','while'];
+				if (noFuncs.indexOf(func_begin_matches[3]) >= 0) {
+					console.log('return null 1');
+					return false;	
+				}
+			}
+		}	
+		return true;
+	}
+	
 	/**
 	 * Get the current position based on the selection and backward or not
 	 * @param   {Object}  selection current selection
