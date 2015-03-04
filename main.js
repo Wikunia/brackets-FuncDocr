@@ -56,8 +56,8 @@ define(function (require, exports, module) {
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
-    var FUNCTION_REGEXP     = /^(?:\s*var\s*(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=)?\s*(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(?:function\s+)?(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{/;
-	var FUNCTION_BEGINNING	= /^(?:\s*var\s*(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=)?\s*((?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(function\s+)?([A-Za-z\$\_][A-Za-z\$\_0-9]*)?/;
+    var FUNCTION_REGEXP     = /^(?:\s*(?:var\s*|(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\.)(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=)?\s*(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(?:function\s+)?(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{/;
+	var FUNCTION_BEGINNING	= /(?:\s*(?:var\s*|(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\.)(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=)?\s*((?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(function\s+)?([A-Za-z\$\_][A-Za-z\$\_0-9]*)?/;
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
