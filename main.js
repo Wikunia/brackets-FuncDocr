@@ -56,8 +56,22 @@ define(function (require, exports, module) {
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
-    var FUNCTION_REGEXP     = /^(?:\s*(?:var\s*|(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\.)(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=)?\s*(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(?:function\s+)?(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{/;
-	var FUNCTION_BEGINNING	= /(?:\s*(?:var\s*|(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\.)(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=)?\s*((?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))?\s*(function\s+)?([A-Za-z\$\_][A-Za-z\$\_0-9]*)?/;
+	
+	var FUNCTION_FORM_VAR 	= /\s*var\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // var stuff =
+	var FUNCTION_FORM_OBJ 	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\.[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
+	var FUNCTION_FORM_CLASS	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
+	var FUNCTION_PS			= /(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))/;
+	
+	var FUNCTION_FORM 		= new RegExp('(?:'+FUNCTION_FORM_VAR.source+'|'+FUNCTION_FORM_OBJ.source+'|'+FUNCTION_FORM_CLASS.source+')');
+	
+	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
+	
+	console.log('FUNCTION_BEGINNING: '+FUNCTION_BEGINNING);
+	
+    var FUNCTION_PARAM     	= /\s*\(([^\)]*)\)\s*{/;
+	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
+	
+	console.log('FUNCTION_REGEXP: '+FUNCTION_REGEXP);
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -80,7 +94,7 @@ define(function (require, exports, module) {
 	var SHORTCUT_REGEX		= /^((Cmd|Ctrl|Alt|Shift)-){1,3}\S$/i;
 
 	// reactjs 
-	var REACTJS_FUNCTION    = /React\.createClass\(\{/;
+	var REACTJS_FUNCTION    = new RegExp('^\\s*'+FUNCTION_FORM.source+'?\\s*React\\.createClass\\(\\{');
 	var REACTJS_PROPS	    = /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
 	
 	
@@ -140,6 +154,8 @@ define(function (require, exports, module) {
 
 		var matches     = FUNCTION_REGEXP.exec(code);
 			
+		console.log('code: ',code);
+		console.log('matches: ',matches);
 		
         var signature   = {};
 		// defaults
@@ -621,6 +637,7 @@ define(function (require, exports, module) {
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
 					var func_matches= FUNCTION_REGEXP.exec(code);
+					console.log('func_matches no Flynn: ',func_matches); 
 					if (func_matches || REACTJS_FUNCTION.test(code)) {
 						if (deepFunctionCheck(func_matches)) {
 							editor.setCursorPos(currentLineNr+1,0);
@@ -637,6 +654,7 @@ define(function (require, exports, module) {
 						var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
 							var func_matches= FUNCTION_REGEXP.exec(code);
+							console.log('func_matches: ',func_matches); 
 							if (func_matches || REACTJS_FUNCTION.test(code)) {
 								if (deepFunctionCheck(func_matches)) {
 									editor.setCursorPos(currentLineNr+2,0);
