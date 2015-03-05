@@ -66,12 +66,8 @@ define(function (require, exports, module) {
 	
 	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
 	
-	console.log('FUNCTION_BEGINNING: '+FUNCTION_BEGINNING);
-	
     var FUNCTION_PARAM     	= /\s*\(([^\)]*)\)\s*{/;
 	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
-	
-	console.log('FUNCTION_REGEXP: '+FUNCTION_REGEXP);
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -154,9 +150,7 @@ define(function (require, exports, module) {
 
 		var matches     = FUNCTION_REGEXP.exec(code);
 			
-		console.log('code: ',code);
-		console.log('matches: ',matches);
-		
+	
         var signature   = {};
 		// defaults
 		signature.indentation = INDENTATION_REGEXP.exec(code)[0];
@@ -637,7 +631,6 @@ define(function (require, exports, module) {
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
 					var func_matches= FUNCTION_REGEXP.exec(code);
-					console.log('func_matches no Flynn: ',func_matches); 
 					if (func_matches || REACTJS_FUNCTION.test(code)) {
 						if (deepFunctionCheck(func_matches)) {
 							editor.setCursorPos(currentLineNr+1,0);
@@ -654,7 +647,6 @@ define(function (require, exports, module) {
 						var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
 							var func_matches= FUNCTION_REGEXP.exec(code);
-							console.log('func_matches: ',func_matches); 
 							if (func_matches || REACTJS_FUNCTION.test(code)) {
 								if (deepFunctionCheck(func_matches)) {
 									editor.setCursorPos(currentLineNr+2,0);
