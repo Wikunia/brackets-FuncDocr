@@ -1,22 +1,23 @@
 {
     "tags": {
-        "link": "@link [[Link]] [[Description]]",
-        "param": "@param [[Type]] [[Description]]",
-        "return": "@return [[Type]] [[Description]]",
-		"private": "@private",
- 		"protected": "@protected",
- 		"public": "@public",
-		"static": "@static"
+             "link": "@link [[Link]] [[Description]]",
+            "param": "@param [[Type]] [[Description]]",
+           "return": "@return [[Type]] [[Description]]",
+          "private": "@private",
+ 	"protected": "@protected",
+ 	   "public": "@public",
+	   "static": "@static"
     },
 	"types": {
-			"number": 	"integer",
-			"float":	"float",
-			"string": 	"string",
-			"boolean":	"boolean",
-			"array": 	"array",
-			"object": 	"object",
-			"regexp": 	"regExp",
-			"function": "function",
-			"callback": "callback"
+		 "number":  "Integer",
+		  "float":  "Float",
+		 "string":  "String",
+		"boolean":  "Boolean",
+		  "array":  "Array",
+		 "object":  "Object",
+	 	 "regexp":  "RegExp",
+	       "function":  "Function",
+	       "callback":  "Callback",
+	          "mixed":  "Mixed"
 	}
 }
