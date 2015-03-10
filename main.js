@@ -30,93 +30,88 @@ define(function (require, exports, module) {
     'use strict';
 
 	var AppInit            	= brackets.getModule("utils/AppInit");
-    var CodeHintManager     = brackets.getModule("editor/CodeHintManager");
-    var CommandManager      = brackets.getModule('command/CommandManager');
+	var CodeHintManager     = brackets.getModule("editor/CodeHintManager");
+	var CommandManager      = brackets.getModule('command/CommandManager');
 	var Commands            = brackets.getModule("command/Commands");
-    var KeyEvent            = brackets.getModule('utils/KeyEvent');
-    var EditorManager       = brackets.getModule('editor/EditorManager');
-    var DocumentManager     = brackets.getModule('document/DocumentManager');
+	var KeyEvent            = brackets.getModule('utils/KeyEvent');
+	var EditorManager       = brackets.getModule('editor/EditorManager');
+	var DocumentManager     = brackets.getModule('document/DocumentManager');
 	var JSUtils             = brackets.getModule("language/JSUtils");
-    var KeyBindingManager   = brackets.getModule('command/KeyBindingManager');
-    var Menus               = brackets.getModule('command/Menus');
-	var Dialogs				= brackets.getModule('widgets/Dialogs');
+	var KeyBindingManager   = brackets.getModule('command/KeyBindingManager');
+	var Menus               = brackets.getModule('command/Menus');
+	var Dialogs		= brackets.getModule('widgets/Dialogs');
 	var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
-	var Menus          		= brackets.getModule("command/Menus");
-	var MainViewManager		= brackets.getModule("view/MainViewManager");
+	var Menus          	= brackets.getModule("command/Menus");
+	var MainViewManager	= brackets.getModule("view/MainViewManager");
+	var prefDialogHTML	= require('text!dialog/prefs.html');
 
-	var prefDialogHTML		= require('text!dialog/prefs.html');
-
-	var allDefinitions 		= {
-		 default: 		require('text!definitions/default.json'),
-         javascript: 	require('text!definitions/js.json'),
-         php: 			require('text!definitions/php.json')
-	}
-	var definitions;
+	var allDefinitions = {
+		 default:  require('text!definitions/default.json'),
+              javascript:  require('text!definitions/js.json'),
+                     php:  require('text!definitions/php.json')
+	};
 	
-    var COMMAND_ID          = 'funcdocr';
-    var COMMAND_ID_SETTINGS = 'funcdocr.settings';
+	var definitions;
+        var COMMAND_ID          = 'funcdocr';
+        var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
 	
 	var FUNCTION_FORM_VAR 	= /\s*var\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // var stuff =
 	var FUNCTION_FORM_OBJ 	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\.(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
 	var FUNCTION_FORM_CLASS	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
-	var FUNCTION_PS			= /(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))/;
-	
-	var FUNCTION_FORM 		= new RegExp('(?:'+FUNCTION_FORM_VAR.source+'|'+FUNCTION_FORM_OBJ.source+'|'+FUNCTION_FORM_CLASS.source+')');
-	
+	var FUNCTION_PS		= /(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))/;
+	var FUNCTION_FORM 	= new RegExp('(?:'+FUNCTION_FORM_VAR.source+'|'+FUNCTION_FORM_OBJ.source+'|'+FUNCTION_FORM_CLASS.source+')');
 	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
+        var FUNCTION_PARAM     	= /\s*\(([^\)]*)\)\s*{/;
+	var FUNCTION_REGEXP	= new RegExp('^'+FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
 	
-    var FUNCTION_PARAM     	= /\s*\(([^\)]*)\)\s*{/;
-	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
-	
-    var INDENTATION_REGEXP  = /^([\t\ ]*)/;
+    	var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
-    var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
-    var DOCBLOCK_START      = /^\s*\/\*\*/;
-    var DOCBLOCK_MIDDLE     = /^\s*\*/;
-    var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*\s*$/;
-    var DOCBLOCK_END        = /^\s*\*\//;
-    var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
-    var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
-	var DOCBLOCK_PAR_LINE 	= /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
-	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
-	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
+	var DOCBLOCK_BOUNDARY     = /[A-Za-z\[\]]/;
+	var DOCBLOCK_START        = /^\s*\/\*\*/;
+	var DOCBLOCK_MIDDLE       = /^\s*\*/;
+	var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*\s*$/;
+	var DOCBLOCK_END          = /^\s*\*\//;
+	var DOCBLOCK_FIELD        = /(\[\[[^\]]+\]\])/;
+	var DOCBLOCK_LAST_FIELD   = /.*(\[\[[^\]]+\]\])/;
+	var DOCBLOCK_PAR_LINE 	  = /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
+	var DOCBLOCK_RET_LINE     = /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
+	var DOCBLOCK_MULTI_LINE   = /^(\s*)(\*)(\s+)/;
 
-	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)?\s*(.*?)=(.*)/;
-	var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["']undefined["']\s*\)?\s*\?(.*?):(.*)/;
+	var TYPEOF_LONG 	= /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)?\s*(.*?)=(.*)/;
+	var TYPEOF_SHORT	= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["']undefined["']\s*\)?\s*\?(.*?):(.*)/;
 	var TYPEOF_TRUE_SHORT	= /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)\s*\|\|\s*(\S+)/;
-	var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
-
-	var SHORTCUT_REGEX		= /^((Cmd|Ctrl|Alt|Shift)-){1,3}\S$/i;
+	var OR_DEFAULT		= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
+	var SHORTCUT_REGEX	= /^((Cmd|Ctrl|Alt|Shift)-){1,3}\S$/i;
 
 	// reactjs 
 	var REACTJS_FUNCTION    = new RegExp('^\\s*'+FUNCTION_FORM.source+'?\\s*React\\.createClass\\(\\{');
-	var REACTJS_PROPS	    = /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
+	var REACTJS_PROPS	= /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
 	
 	
-	var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
+	var PROPERTIES 		= ['arity', 'caller', 'constructor', 'length', 'prototype'];
 	var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
-							   'localeCompare', 'match', 'normalize', 'repeat', 'replace', 'search',
-							   'split', 'startsWith', 'substr', 'substring', 'toLocaleLowerCase',
-							   'toLocaleUpperCase', 'toLowerCase', 'toUpperCase', 'trim', 'valueOf'];
-	var ARRAY_FUNCTIONS		= ['fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift', 'join'];
+				   'localeCompare', 'match', 'normalize', 'repeat', 'replace', 'search',
+				   'split', 'startsWith', 'substr', 'substring', 'toLocaleLowerCase',
+				   'toLocaleUpperCase', 'toLowerCase', 'toUpperCase', 'trim', 'valueOf'];
+	var ARRAY_FUNCTIONS	= ['fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift', 'join'];
 	var OBJECT_FUNCTIONS 	= ['create', 'defineProperty', 'defineProperties', 'freeze', 'getOwnPropertyDescriptor',
-							   'getOwnPropertyNames', 'getOwnPropertySymbols', 'getPrototypeOf', 'isExtensible',
-							   'isFrozen', 'isSealed', 'keys', 'preventExtensions', 'seal', 'setPrototypeOf'];
+				   'getOwnPropertyNames', 'getOwnPropertySymbols', 'getPrototypeOf', 'isExtensible',
+				   'isFrozen', 'isSealed', 'keys', 'preventExtensions', 'seal', 'setPrototypeOf'];
 	var REGEXP_FUNCTIONS 	= ['exec','test'];
 
-    var PARAM_WRAPPERS = {
-        'javascript'   : ['{', '}'],
-        'coffeescript' : ['{', '}'],
-        'livescript'   : ['{', '}'],
-        'php'          : ['', '']
-    };
+    	var PARAM_WRAPPERS = {
+	        'javascript'   : ['{', '}'],
+	        'coffeescript' : ['{', '}'],
+	        'livescript'   : ['{', '}'],
+	        'php'          : ['', '']
+    	};
 
 	var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
-	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
-	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
-	_prefs.definePreference('autoindent_enter', 'boolean', true);
-	_prefs.definePreference('autoindent_tab', 'boolean', true);
+	    _prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
+	    _prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
+	    _prefs.definePreference('autoindent_enter', 'boolean', true);
+	    _prefs.definePreference('autoindent_tab', 'boolean', true);
 
 	var existingKeyBindings;
 
@@ -139,69 +134,71 @@ define(function (require, exports, module) {
      * @returns {Object} [.description],[.parameter],[.returns]
      */
     function getFunctionSignature() {
-        var editor      = EditorManager.getCurrentFullEditor();
-		langId  		= editor.getLanguageForSelection().getId();
-        var position    = editor.getCursorPos();
-        var document    = editor.document;
-        var lineBefore  = document.getLine(position.line-1);
-		var code 		= editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
+        var editor     = EditorManager.getCurrentFullEditor();
+	var langId     = editor.getLanguageForSelection().getId();
+        var position   = editor.getCursorPos();
+        var document   = editor.document;
+        var lineBefore = document.getLine(position.line-1);
+	var code       = editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
         
-        var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
-
-		var matches     = FUNCTION_REGEXP.exec(code);
-			
-	
-        var signature   = {};
-		// defaults
-		signature.indentation = INDENTATION_REGEXP.exec(code)[0];
-        signature.parameters  = [];
-		signature.returns = {bool: false};
+        var docExists  = DOCBLOCK_END.test(lineBefore) ? true : false;
+	var matches    = FUNCTION_REGEXP.exec(code);
+	// defaults
+        var signature   = {
+        	indentation: INDENTATION_REGEXP.exec(code)[0],
+        	parameters:[],
+        	returns:{
+        		bool:false
+        	}
+        };
 		
         if (!matches) {
-			// try other function types
-			signature = getReactSignature(signature,editor,position,code);			
+		// try other function types
+		signature = getReactSignature(signature,editor,position,code);			
         } else {
-			signature = getNormalSignature(signature,editor,position,matches);
-		}
-		if (!signature) {
-			return null;
-		}
+		signature = getNormalSignature(signature,editor,position,matches);
+	}
+	if (!signature) {
+		return null;
+	}
 			
-		if (docExists) { // try to update the doc block (parameter added or deleted)
-			var doc = getExistingDocSignature(document,position);
-			var docStartLine = doc.startLine;
-			var docSignature = doc.signature;
+	if (docExists) { // try to update the doc block (parameter added or deleted)
+		var doc          = getExistingDocSignature(document,position);
+		var docStartLine = doc.startLine;
+		var docSignature = doc.signature;
 
-			// merge the docSignature into signature
-			if (docSignature.description != '') {
-				signature.description = docSignature.description;
-			}
-
-			for (var i = 0; i < docSignature.parameters.length; i++) {
-				var paramIndex = signature.parameters.keyIndexOf('name',docSignature.parameters[i].name);
-				if (paramIndex >= 0) {
-					if (signature.parameters[paramIndex].optional && signature.parameters[paramIndex].default !== false) {
-						signature.parameters[paramIndex].description = docSignature.parameters[i].description;
-						signature.parameters[paramIndex].type		 = docSignature.parameters[i].type;
-					} else {
-						signature.parameters[paramIndex] = docSignature.parameters[i];
-					}
-				}
-			}
-			if (signature.returns.bool) {
-				if (docSignature.returns.bool) {
-					if (docSignature.returns.type == '[[Type]]') {
-						signature.returns.description = docSignature.returns.description;
-					} else {
-						signature.returns = docSignature.returns;
-					}
-				}
-				signature.returns.bool = true;
-			}
-			editor._codeMirror.replaceRange('', {ch: 0, line: docStartLine}, {ch: 0, line: position.line});
+		// merge the docSignature into signature
+		if (docSignature.description != '') {
+			signature.description = docSignature.description;
 		}
+
+		for (var i = 0; i < docSignature.parameters.length; i++) {
+			var paramIndex = signature.parameters.keyIndexOf('name',docSignature.parameters[i].name);
+			if (paramIndex >= 0) {
+				if (signature.parameters[paramIndex].optional && signature.parameters[paramIndex].default !== false) {
+					signature.parameters[paramIndex].description = docSignature.parameters[i].description;
+					signature.parameters[paramIndex].type		 = docSignature.parameters[i].type;
+				} else {
+					signature.parameters[paramIndex] = docSignature.parameters[i];
+				}
+			}
+		}
+		if (signature.returns.bool) {
+			if (docSignature.returns.bool) {
+				if (docSignature.returns.type == '[[Type]]') {
+					signature.returns.description = docSignature.returns.description;
+				} else {
+					signature.returns = docSignature.returns;
+				}
+			}
+			signature.returns.bool = true;
+		}
+		editor._codeMirror.replaceRange('', {ch: 0, line: docStartLine}, {ch: 0, line: position.line});
+	}
         return signature;
     }
+
+
 
 	function getNormalSignature(signature,editor,position,matches) {
 		var parameters 	= matches[1].split(',');
