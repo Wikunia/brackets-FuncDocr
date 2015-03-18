@@ -1,6 +1,5 @@
 {
     "tags": {
-        "link": "{@link [[Link]] [[Description]]}",
         "abstract": "@abstract",
         "access": "@access [[Access<private|protected|public>]]",
         "alias": "@alias [[Link]]",
@@ -28,9 +27,11 @@
         "ignore": "@ignore",
         "inheritdoc": "@inheritdoc",
         "inner": "@inner",
-        "instance": "@instance",
+        "instance": "@instance",	
+		"lastmodifiedDate":"@lastmodifiedDate [[date]]",
         "lends": "@lends [[Link]]",
         "license": "@license [[License]]",
+        "link": "{@link [[Link]] [[Description]]}",
         "listens": "@listens [[Description]]",
         "member": "@member {[[Type]]} [[Description]]",
         "memberof": "@memberof [[Link]]",
