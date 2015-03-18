@@ -1,5 +1,7 @@
 {
     "tags": {
+		"createDate": "@createDate [[date]]",
+		"lastmodifiedBy": "@lastmodifiedBy [[name]]", 
 		"lastmodifiedDate":"@lastmodifiedDate [[date]]",
         "link": "{@link [[Link]] [[Description]]}",
         "param": "@param {[[Type]]} [[Description]]",
