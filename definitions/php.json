@@ -1,8 +1,8 @@
 {
     "tags": {
-		"createDate": "@createDate [[date]]",
-		"lastmodifiedBy": "@lastmodifiedBy [[name]]",
-		"lastmodifiedDate":"@lastmodifiedDate [[date]]",
+		"createDate": "@createDate [[Date]]",
+		"lastmodifiedBy": "@lastmodifiedBy [[Name]]",
+		"lastmodifiedDate":"@lastmodifiedDate [[Date]]",
         "link": "@link [[Link]] [[Description]]",
         "param": "@param [[Type]] [[Description]]",
         "return": "@return [[Type]] [[Description]]",

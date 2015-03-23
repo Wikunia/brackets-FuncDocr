@@ -7,6 +7,7 @@ define(['text!definitions/default.json',
     function (defaultDef, javascriptDef, phpDef) {
         var DocumentManager     = brackets.getModule('document/DocumentManager');
 		var EditorManager       = brackets.getModule('editor/EditorManager');
+		var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
 
 		/**
          * Parse Documentation Definitions, used to populate tag suggestions
@@ -54,17 +55,10 @@ define(['text!definitions/default.json',
             this.insideDocPos = this.insideDocBlock(this.pos);
             if (this.insideDocPos) {
                 this.pos = editor.getCursorPos();
-                switch (this.selection) {
-                case "[[Type]]":
-                    this.implicitChar = "[[Type]]";
-                    return true;
-                case "[[Link]]":
-                    this.implicitChar = "[[Link]]";
-                    return true;
-				 case "[[callLink]]":
-                    this.implicitChar = "[[callLink]]";
-                    return true;
-                default:
+				if (this.selection.substr(0,2) == '[[' && this.selection.substr(-2,2) == ']]') {
+					this.implicitChar = this.selection;
+					return true;
+				} else {
                     if (implicitChar == '@') {
                         this.removeSelection = true;
                         this.implicitChar = "@";
@@ -150,6 +144,37 @@ define(['text!definitions/default.json',
                 }
                 hints.push.apply(hints, bestFuncs.concat(otherFuncs));
                 break;
+			case "[[Name]]":
+			case "[[Author]]":
+				var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
+				var prefsAtName = _prefs.get('atName');
+				if (prefsAtName != '') {
+					hints.push(prefsAtName);
+				}
+				break;
+			case "[[Date]]":
+				var today = new Date();
+				var dd = today.getDate();
+					dd = dd < 10 ? '0'+dd : dd;
+				var mm = today.getMonth()+1; //January is 0!
+					mm = mm < 10 ? '0'+mm : mm;
+				var yyyy = today.getFullYear();
+				var hh = today.getHours();	
+				var mi = today.getMinutes();	
+					
+				hints.push(mm+'/'+dd+'/'+yyyy);	
+				hints.push(dd+'.'+mm+'.'+yyyy);	
+				hints.push(yyyy+'-'+mm+'-'+dd);	
+					
+				hints.push(mm+'/'+dd+'/'+yyyy+' '+hh+':'+mi);	
+				hints.push(dd+'.'+mm+'.'+yyyy+' '+hh+':'+mi);	
+				hints.push(yyyy+'-'+mm+'-'+dd+' '+hh+':'+mi);
+				break;
+			case "[[License]]":
+				hints.push('Creative Commons v3.0');	
+				hints.push('MIT license (MIT)');	
+				hints.push('W3C License (W3C)');	
+				break;
             case "@":
                 var line = this.editor.document.getRange({
                     line: this.pos.line,

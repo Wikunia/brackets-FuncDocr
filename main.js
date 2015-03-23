@@ -43,6 +43,7 @@ define(function (require, exports, module) {
 	var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
 	var Menus          		= brackets.getModule("command/Menus");
 	var MainViewManager		= brackets.getModule("view/MainViewManager");
+	var ExtensionUtils		= brackets.getModule('utils/ExtensionUtils');
 
 	var prefDialogHTML		= require('text!dialog/prefs.html');
 
@@ -52,6 +53,8 @@ define(function (require, exports, module) {
          php: 			require('text!definitions/php.json')
 	}
 	var definitions;
+	
+	ExtensionUtils.loadStyleSheet(module, 'dialog/css/prefs.css');
 	
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
@@ -117,6 +120,7 @@ define(function (require, exports, module) {
 	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
 	_prefs.definePreference('autoindent_enter', 'boolean', true);
 	_prefs.definePreference('autoindent_tab', 'boolean', true);
+	_prefs.definePreference('atName', 'string', '');
 
 	var existingKeyBindings;
 
@@ -1318,7 +1322,10 @@ define(function (require, exports, module) {
 		if (!_prefs.get('autoindent_tab')) {
 			$dialog.find("#cb_autoindent_tab").prop('checked',true);	
 		}
-		
+		var prefsAtName = _prefs.get('atName');
+		if (prefsAtName != '') {			
+			$dialog.find("#atName").val(prefsAtName);
+		}		
 		
 		$dialog.find("#shortcut").val(_prefs.get('shortcut')).on('input', function () {
 			if (!SHORTCUT_REGEX.test($(this).val())) {
@@ -1346,6 +1353,7 @@ define(function (require, exports, module) {
 				}
 				_prefs.set('autoindent_enter', !$dialog.find("#cb_autoindent_enter").prop('checked'));
 				_prefs.set('autoindent_tab', !$dialog.find("#cb_autoindent_tab").prop('checked'));	
+				_prefs.set('atName', $dialog.find("#atName").val());	
 			}
 		});
 	}
