@@ -114,7 +114,8 @@ define(function (require, exports, module) {
         'livescript'   : ['{', '}'],
         'php'          : ['', '']
     };
-
+	var SUPPORTED_LANGS  = Object.keys(PARAM_WRAPPERS);
+	
 	var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
 	_prefs.definePreference('shortcut', 'string', 'Ctrl-Alt-D');
 	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
@@ -135,6 +136,11 @@ define(function (require, exports, module) {
      * Handle the shortcut to create a doc block
      */
     function handleDocBlock() {
+        var editor      = EditorManager.getCurrentFullEditor();
+		langId  		= editor.getLanguageForSelection().getId();
+		if (SUPPORTED_LANGS.indexOf(langId) < 0) {
+			return;
+		}
         insertDocBlock(generateDocBlock(getFunctionSignature()));
     }
 
@@ -144,7 +150,6 @@ define(function (require, exports, module) {
      */
     function getFunctionSignature() {
         var editor      = EditorManager.getCurrentFullEditor();
-		langId  		= editor.getLanguageForSelection().getId();
         var position    = editor.getCursorPos();
         var document    = editor.document;
         var lineBefore  = document.getLine(position.line-1);
@@ -424,11 +429,6 @@ define(function (require, exports, module) {
         var editor  = EditorManager.getCurrentFullEditor();
         var wrapper = PARAM_WRAPPERS[langId];
 
-        if (!wrapper) {
-            console.warn('Unsupported language: ' . langId);
-            return null;
-        }
-
 		var output = ['/**'];
 
 		// add description
@@ -618,6 +618,10 @@ define(function (require, exports, module) {
 	function handleKey(event) {
 		var editor  = EditorManager.getCurrentFullEditor();
 		langId  	= editor.getLanguageForSelection().getId();
+		console.log('SUPPORTED_LANGS: ',SUPPORTED_LANGS);
+		if (SUPPORTED_LANGS.indexOf(langId) < 0) {
+			return;
+		}
 		var selection = editor.getSelection();
 		var backward  = event.shiftKey;
 		if ((event.type === 'keydown' && event.keyCode === KeyEvent.DOM_VK_TAB) ||
