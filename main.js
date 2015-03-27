@@ -60,7 +60,7 @@ define(function (require, exports, module) {
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
 	
-	var FUNCTION_FORM_VAR 	= /\s*var\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // var stuff =
+	var FUNCTION_FORM_VAR 	= /\s*(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // var stuff =
 	var FUNCTION_FORM_OBJ 	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\.(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
 	var FUNCTION_FORM_CLASS	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
 	var FUNCTION_PS			= /(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))/;
@@ -441,7 +441,7 @@ define(function (require, exports, module) {
 		var maxPadding = getMaxPadding(signature);
 		var maxParamLength = maxPadding.title;
         var maxTypeLength = maxPadding.type;
-
+		
 		// returns or return
 		var returnDocName = 'returns';
 		if (langId == 'php') {
