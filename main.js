@@ -75,7 +75,7 @@ define(function (require, exports, module) {
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
-    var DOCBLOCK_START      = /^\s*\/\*\*/;
+    var DOCBLOCK_START      = /^\s*\/\*\*?/;
     var DOCBLOCK_MIDDLE     = /^\s*\*/;
     var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*\s*$/;
     var DOCBLOCK_END        = /^\s*\*\//;
@@ -618,7 +618,7 @@ define(function (require, exports, module) {
 	function handleKey(event) {
 		var editor  = EditorManager.getCurrentFullEditor();
 		langId  	= editor.getLanguageForSelection().getId();
-		console.log('SUPPORTED_LANGS: ',SUPPORTED_LANGS);
+
 		if (SUPPORTED_LANGS.indexOf(langId) < 0) {
 			return;
 		}
