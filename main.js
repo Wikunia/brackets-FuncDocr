@@ -207,9 +207,8 @@ define(function (require, exports, module) {
 				}
 				signature.returns.bool = true;
 			}
-			editor._codeMirror.replaceRange('', {ch: 0, line: docStartLine}, {ch: 0, line: position.line});
 		}
-        return signature;
+        return {signature: signature, docExists: docExists ? {start: docStartLine, end: position.line} : false };
     }
 
 	function getNormalSignature(signature,editor,position,matches) {
@@ -418,10 +417,11 @@ define(function (require, exports, module) {
 
     /**
      * Generate the doc block for a function signature
-     * @param   {Object} signature .description,.parameter,.returns
+     * @param   {Object} signature: .description,.parameter,.returns, docExists: false|Object
      * @returns {String} the doc block with the correct indentation
      */
-    function generateDocBlock(signature) {
+    function generateDocBlock(signatureObj) {
+		var signature = signatureObj.signature;
         if (!signature) {
             return null;
         }
@@ -510,7 +510,7 @@ define(function (require, exports, module) {
         }
 
         output.push(' */');
-        return signature.indentation + output.join('\n' + signature.indentation) + '\n';
+        return {signature: signature.indentation + output.join('\n' + signature.indentation) + '\n', docExists: signatureObj.docExists};
     }
 
 	/**
@@ -552,20 +552,32 @@ define(function (require, exports, module) {
 		}
 	}
 
-    /**
-     * Insert the docBlock
-     * @param {String} docBlock the generated doc block
-     */
-    function insertDocBlock(docBlock) {
+
+    function insertDocBlock(docBlockObj) {
+		var docBlock = docBlockObj.signature;
         if (!docBlock) {
             return;
         }
 
         var editor   = EditorManager.getCurrentFullEditor();
-        var position = editor.getCursorPos();
-        position.ch  = 0;
+		var docExists = docBlockObj.docExists;
+		if (docExists) {
+			var doc = DocumentManager.getCurrentDocument();
+			doc.batchOperation(function () {
+				editor._codeMirror.replaceRange('', {ch: 0, line: docExists.start}, {ch: 0, line: docExists.end});
+				var position = editor.getCursorPos();
+				position.ch  = 0;
+				editor._codeMirror.replaceRange(docBlock, position);
+			});
+		} else {
+		    var position = editor.getCursorPos();
+			position.ch  = 0;
+			editor._codeMirror.replaceRange(docBlock, position);
+		}
 
-        editor._codeMirror.replaceRange(docBlock, position);
+		
+		
+        
 
         // Start at the first line, just before [[Description]]
         var lines         = docBlock.split('\n');
