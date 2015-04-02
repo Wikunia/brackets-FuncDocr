@@ -614,7 +614,6 @@ define(function (require, exports, module) {
     function handleClick(event) {
         var editor  = EditorManager.getCurrentFullEditor();
 		langId  	= editor.getLanguageForSelection().getId();
-		console.log('langId: '+langId);
 		var selection = editor.getSelection();
 		if (event.type === 'dblclick') {
             var docBlockPos = insideDocBlock(getPosition(selection,false));
