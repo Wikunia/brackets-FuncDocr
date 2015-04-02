@@ -17,6 +17,7 @@ define(['text!definitions/default.json',
             javascript: JSON.parse(javascriptDef),
             php: JSON.parse(phpDef)
         };
+        DOC_DEFINITIONS.jsx			 = DOC_DEFINITIONS.javascript;
         DOC_DEFINITIONS.coffeescript = DOC_DEFINITIONS.javascript;
         DOC_DEFINITIONS.livescript 	 = DOC_DEFINITIONS.javascript;
     

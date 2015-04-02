@@ -50,6 +50,7 @@ define(function (require, exports, module) {
 	var allDefinitions 		= {
 		 default: 		require('text!definitions/default.json'),
          javascript: 	require('text!definitions/js.json'),
+         jsx:		 	require('text!definitions/js.json'), // use the js file
          php: 			require('text!definitions/php.json')
 	}
 	var definitions;
@@ -109,6 +110,7 @@ define(function (require, exports, module) {
 	var REGEXP_FUNCTIONS 	= ['exec','test'];
 
     var PARAM_WRAPPERS = {
+        'jsx'   : ['{', '}'],
         'javascript'   : ['{', '}'],
         'coffeescript' : ['{', '}'],
         'livescript'   : ['{', '}'],
@@ -325,6 +327,7 @@ define(function (require, exports, module) {
 
 				// 0 = param, [1 = type], 2 = title 3- = description
 				switch(langId) {
+					case "jsx":
 					case "javascript":
 					case "coffeescript":
 					case "livescript":
@@ -611,6 +614,7 @@ define(function (require, exports, module) {
     function handleClick(event) {
         var editor  = EditorManager.getCurrentFullEditor();
 		langId  	= editor.getLanguageForSelection().getId();
+		console.log('langId: '+langId);
 		var selection = editor.getSelection();
 		if (event.type === 'dblclick') {
             var docBlockPos = insideDocBlock(getPosition(selection,false));
@@ -1533,6 +1537,7 @@ define(function (require, exports, module) {
 		for (var i = 0; i < defKeys.length; i++) {
 			allDefinitions[defKeys[i]] = JSON.parse(allDefinitions[defKeys[i]]);
 		}		
+		allDefinitions.jsx			= allDefinitions.javascript;
 		allDefinitions.coffeescript = allDefinitions.javascript;
 		allDefinitions.livescript 	= allDefinitions.javascript;
 
@@ -1567,7 +1572,7 @@ define(function (require, exports, module) {
 			FUNCTION_REGEXP:FUNCTION_REGEXP
 		});
 
-		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php"], 0);
+		CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php", "jsx"], 0);
 	});
 
 
