@@ -648,8 +648,12 @@ define(function (require, exports, module) {
 			} else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) {	// no docBlock needed (check it later)
 				// Check for /** in the current line
 				var currentLineNr = editor.getCursorPos().line;
+				var lastLine 	  = editor.document.getLine(currentLineNr-1);
+				var nextLine 	  = editor.document.getLine(currentLineNr+1);
+			
 				// line - 1 because this triggers after the enter
-				if (DOCBLOCK_START.test(editor.document.getLine(currentLineNr-1))) {
+				if (DOCBLOCK_START.test(lastLine) && !DOCBLOCK_MIDDLE.test(nextLine)) {
+					
 					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
@@ -806,7 +810,20 @@ define(function (require, exports, module) {
 	 * @param {Object} position    current position
 	 */
 	function enterAfter(editor,lastLine,currentLine,position) {
-		if (DOCBLOCK_MIDDLE.test(lastLine)) {
+		if (DOCBLOCK_MIDDLE.test(lastLine) || DOCBLOCK_START.test(lastLine)) {
+			if (DOCBLOCK_START.test(lastLine)) {
+				var replaceMatch = /^(\s*)\/\*\*?/.exec(lastLine);
+				var replaceLength = replaceMatch[1].length+2;
+				var padding = replaceMatch[1]+' \*';
+				editor.document.replaceRange(
+					padding,
+				 	{line:position.line,ch:0},
+				 	{line:position.line,ch:replaceLength}
+				);
+				return;
+			}
+			
+			
 			// get the correct wrapper ({} for JS or '' for PHP)
 			var wrapper 		= PARAM_WRAPPERS[langId];
 			var paddingRegex 	= new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+([^ ]+\\s+)');
