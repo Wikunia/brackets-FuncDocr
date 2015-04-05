@@ -61,7 +61,7 @@ define(function (require, exports, module) {
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
 	
-	var FUNCTION_FORM_VAR 	= /\s*(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // var stuff =
+	var FUNCTION_FORM_VAR 	= /\s*(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*\s*=/; // var stuff =
 	var FUNCTION_FORM_OBJ 	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\.(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
 	var FUNCTION_FORM_CLASS	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
 	var FUNCTION_PS			= /(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))/;
@@ -69,7 +69,7 @@ define(function (require, exports, module) {
 	var FUNCTION_FORM 		= new RegExp('(?:'+FUNCTION_FORM_VAR.source+'|'+FUNCTION_FORM_OBJ.source+'|'+FUNCTION_FORM_CLASS.source+')');
 	
 	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
-	
+		
     var FUNCTION_PARAM     	= /\s*\(([^\)]*)\)\s*{/;
 	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
 	
@@ -140,6 +140,7 @@ define(function (require, exports, module) {
     function handleDocBlock() {
         var editor      = EditorManager.getCurrentFullEditor();
 		langId  		= editor.getLanguageForSelection().getId();
+		
 		if (SUPPORTED_LANGS.indexOf(langId) < 0) {
 			return;
 		}
@@ -167,7 +168,7 @@ define(function (require, exports, module) {
 		signature.indentation = INDENTATION_REGEXP.exec(code)[0];
         signature.parameters  = [];
 		signature.returns = {bool: false};
-		
+				
         if (!matches) {
 			// try other function types
 			signature = getReactSignature(signature,editor,position,code);			
@@ -648,13 +649,13 @@ define(function (require, exports, module) {
 			} else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) {	// no docBlock needed (check it later)
 				// Check for /** in the current line
 				var currentLineNr = editor.getCursorPos().line;
+				// line - 1 because this triggers after the enter
 				var lastLine 	  = editor.document.getLine(currentLineNr-1);
 				var nextLine 	  = editor.document.getLine(currentLineNr+1);
 			
-				// line - 1 because this triggers after the enter
-				if (DOCBLOCK_START.test(lastLine) && !DOCBLOCK_MIDDLE.test(nextLine)) {
-					
-					// currentLine is empty or *
+				// last part (the OR) is for the reasonable comments extension by Peter Flynn
+				if (DOCBLOCK_START.test(lastLine) && (!DOCBLOCK_MIDDLE.test(nextLine) || DOCBLOCK_END.test(nextLine))) {
+ 					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
 					var func_matches= FUNCTION_REGEXP.exec(code);
