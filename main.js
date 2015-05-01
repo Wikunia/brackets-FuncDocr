@@ -1364,6 +1364,11 @@ define(function (require, exports, module) {
 			$dialog.find("#atName").val(prefsAtName);
 		}		
 		
+        // Reminder: The "wrong" shortcut shows this dialog
+        if (_prefs.get('shortcut') in existingKeyBindings) {
+            $dialog.find("#shortcutError").html('This shortcut is already in use, please choose another');
+        }
+        
 		$dialog.find("#shortcut").val(_prefs.get('shortcut')).on('input', function () {
 			if (!SHORTCUT_REGEX.test($(this).val())) {
 				$dialog.find("#shortcutError").html('Please enter a valid shortcut!');
