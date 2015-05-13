@@ -70,7 +70,7 @@ define(function (require, exports, module) {
 	
 	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
 		
-    var FUNCTION_PARAM     	= /\s*\(([^\)]*)\)\s*{/;
+    var FUNCTION_PARAM     	= /\s*\(([^{]*)\)\s*{/; // maybe not the best way to get the function parameters (matching brackets)
 	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
