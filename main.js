@@ -181,7 +181,6 @@ define(function (require, exports, module) {
 			
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
-            console.log('docExists: ',JSON.stringify(doc.signature));
 			var docStartLine = doc.startLine;
 			var docSignature = doc.signature;
 
@@ -189,7 +188,6 @@ define(function (require, exports, module) {
 			if (docSignature.description != '') {
 				signature.description = docSignature.description;
 			}
-            console.log('signature (merge): ',JSON.stringify(signature));
 			for (var i = 0; i < docSignature.parameters.length; i++) {
 				var paramIndex = signature.parameters.keyIndexOf('name',docSignature.parameters[i].name);
 				if (paramIndex >= 0) {
@@ -212,7 +210,6 @@ define(function (require, exports, module) {
 				signature.returns.bool = true;
 			}
 		}
-        console.log('signature: ',JSON.stringify(signature));
         return {signature: signature, docExists: docExists ? {start: docStartLine, end: position.line} : false };
     }
 
