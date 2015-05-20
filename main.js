@@ -181,6 +181,7 @@ define(function (require, exports, module) {
 			
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
+            console.log('docExists: ',JSON.stringify(doc.signature));
 			var docStartLine = doc.startLine;
 			var docSignature = doc.signature;
 
@@ -188,7 +189,7 @@ define(function (require, exports, module) {
 			if (docSignature.description != '') {
 				signature.description = docSignature.description;
 			}
-
+            console.log('signature (merge): ',JSON.stringify(signature));
 			for (var i = 0; i < docSignature.parameters.length; i++) {
 				var paramIndex = signature.parameters.keyIndexOf('name',docSignature.parameters[i].name);
 				if (paramIndex >= 0) {
@@ -211,6 +212,7 @@ define(function (require, exports, module) {
 				signature.returns.bool = true;
 			}
 		}
+        console.log('signature: ',JSON.stringify(signature));
         return {signature: signature, docExists: docExists ? {start: docStartLine, end: position.line} : false };
     }
 
@@ -324,8 +326,20 @@ define(function (require, exports, module) {
 				// get the split delimiters
 				var delimiters = param_parts.filter(function(v,i) { return ((i % 2) === 1); });
 				param_parts = param_parts.filter(function(v,i) { return ((i % 2 === 0)); });
-
-
+                
+                // if the variable is optional it will start with '[' and there might be '=' inside the '['
+                // => change param_parts so that param_parts[2] is the "name" starting with '[' and ending with ']'
+                if (param_parts[2].charAt(0) == '[') {
+                    while (param_parts.length >= 4) {
+                        if (param_parts[2].charAt(param_parts[2].length-1) == ']') {
+                            break;   
+                        }
+                        param_parts[2]+=delimiters[3]+param_parts[3];
+                        param_parts.splice(3,1);
+                        delimiters.splice(3,1);
+                    }
+                }
+                    
 				// 0 = param, [1 = type], 2 = title 3- = description
 				switch(langId) {
 					case "jsx":
