@@ -669,8 +669,6 @@ define(function (require, exports, module) {
  					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
-                    console.log('code: ',code);
-                    console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
 					var func_matches= FUNCTION_REGEXP.exec(code);
 					if (func_matches || REACTJS_FUNCTION.test(code)) {
 						if (deepFunctionCheck(func_matches)) {
