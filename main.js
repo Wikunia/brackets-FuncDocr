@@ -61,17 +61,17 @@ define(function (require, exports, module) {
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
 	
-	var FUNCTION_FORM_VAR 	= /\s*(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*\s*=/; // var stuff =
-	var FUNCTION_FORM_OBJ 	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\.(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
-	var FUNCTION_FORM_CLASS	= /\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
+	var FUNCTION_FORM_VAR 	= / *\s??(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*\s*=/; // var stuff =
+	var FUNCTION_FORM_OBJ 	= / *\s??[A-Za-z\$\_][A-Za-z\$\_0-9]*\.(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
+	var FUNCTION_FORM_CLASS	= / *\s??[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
 	var FUNCTION_PS			= /(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))/;
 	
 	var FUNCTION_FORM 		= new RegExp('(?:'+FUNCTION_FORM_VAR.source+'|'+FUNCTION_FORM_OBJ.source+'|'+FUNCTION_FORM_CLASS.source+')');
 	
-	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
+	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'? *\\s??'+FUNCTION_PS.source+'? *\\s??(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
 		
     var FUNCTION_PARAM     	= /\s*\(([^{]*)\)\s*{/; // maybe not the best way to get the function parameters (matching brackets)
-	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'?\\s*'+FUNCTION_PS.source+'?\\s*(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
+	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'? *\\s??'+FUNCTION_PS.source+'? *\\s??(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -669,6 +669,8 @@ define(function (require, exports, module) {
  					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
+                    console.log('code: ',code);
+                    console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
 					var func_matches= FUNCTION_REGEXP.exec(code);
 					if (func_matches || REACTJS_FUNCTION.test(code)) {
 						if (deepFunctionCheck(func_matches)) {
