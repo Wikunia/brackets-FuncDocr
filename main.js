@@ -61,18 +61,35 @@ define(function (require, exports, module) {
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
     var BEFORE_FUNCTION_STARTS =  /[\t ]*/;
+    var ONLY_ONE_LINEBREAK = /[\t ]*\s??[\t ]*/;
 	
 	var FUNCTION_FORM_VAR 	= /(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*\s*=/; // var stuff =
-	var FUNCTION_FORM_OBJ 	= /[A-Za-z\$\_][A-Za-z\$\_0-9]*\.(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
+	var FUNCTION_FORM_OBJ 	= /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
 	var FUNCTION_FORM_CLASS	= /[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
 	var FUNCTION_PS			= /(?:(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))[\t ]*\s??[\t ]*)/;
 	
-	var FUNCTION_FORM 		= new RegExp(BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_VAR.source+'|'+FUNCTION_FORM_OBJ.source+'|'+FUNCTION_FORM_CLASS.source+')[\\t ]*\\s??[\\t ]*)');
-	
-	var FUNCTION_BEGINNING  = new RegExp(FUNCTION_FORM.source+'?'+FUNCTION_PS.source+'?(function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)?'); 
-		
+    var FUNCTION_FORM_VAR_COMPLETE = new RegExp(
+        FUNCTION_FORM_VAR.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+    );
+    
+    var FUNCTION_FORM_OBJ_COMPLETE = new RegExp(
+        FUNCTION_FORM_OBJ.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+    );
+    
+    var FUNCTION_FORM_CLASS_COMPLETE = new RegExp(
+        FUNCTION_FORM_CLASS.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+    );
+    
+    var FUNCTION_FORM_NORMAL = new RegExp(
+        FUNCTION_PS.source+'?(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+    );
+    
+    var FUNCTION_WO_PARAM   = new RegExp(BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
+    
+	var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
+    	
     var FUNCTION_PARAM     	= /\s*\(([^{]*)\)\s*{/; // maybe not the best way to get the function parameters (matching brackets)
-	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_FORM.source+'?'+FUNCTION_PS.source+'?(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'+FUNCTION_PARAM.source); 
+	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source); 
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -95,7 +112,7 @@ define(function (require, exports, module) {
 	var SHORTCUT_REGEX		= /^((Cmd|Ctrl|Alt|Shift)-){1,3}\S$/i;
 
 	// reactjs 
-	var REACTJS_FUNCTION    = new RegExp('^\\s*'+FUNCTION_FORM.source+'?\\s*React\\.createClass\\(\\{');
+	var REACTJS_FUNCTION    = new RegExp('^\\s*'+FUNCTION_FORM_VAR.source+'\\s*React\\.createClass\\(\\{');
 	var REACTJS_PROPS	    = /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
 	
 	
@@ -730,12 +747,15 @@ define(function (require, exports, module) {
 	 */
 	function deepFunctionCheck(matches) {
 		if (matches) {
-			var func_begin_matches    = FUNCTION_BEGINNING.exec(matches[0]);
+            console.log('Deep function check');
+            console.log(matches[0]);
+            console.log(DEEP_FUNCTION_CHECK.source);
+			var func_begin_matches    = DEEP_FUNCTION_CHECK.exec(matches[0]);
+            console.log(func_begin_matches);
 			// check for things like if,for,foreach,while...
-			// func_begin_matches[1] is function or undefined
-			if (!func_begin_matches[2]) {
+			if (func_begin_matches) {
 				var noFuncs = ['if','for','foreach','while'];
-				if (noFuncs.indexOf(func_begin_matches[3]) >= 0) {
+				if (noFuncs.indexOf(func_begin_matches[1]) >= 0) {
 					return false;	
 				}
 			}
