@@ -67,7 +67,7 @@ define(function (require, exports, module) {
 	var FUNCTION_FORM_OBJ 	= /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
 	var FUNCTION_FORM_CLASS	= /[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
 	var FUNCTION_PS			= /(?:(?:(?:public (?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))[\t ]*\s??[\t ]*)/;
-	
+    	
     var FUNCTION_FORM_VAR_COMPLETE = new RegExp(
         FUNCTION_FORM_VAR.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
@@ -88,7 +88,7 @@ define(function (require, exports, module) {
     
 	var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
     	
-    var FUNCTION_PARAM     	= /\s*\(([^{]*)\)\s*{/; // maybe not the best way to get the function parameters (matching brackets)
+    var FUNCTION_PARAM     	= /\s*\(([^{};]*)\)\s*{/; // maybe not the best way to get the function parameters (matching brackets)
 	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source); 
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
@@ -690,6 +690,7 @@ define(function (require, exports, module) {
                     console.log('code: ',code);
                     console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
 					var func_matches= FUNCTION_REGEXP.exec(code);
+                    console.log('func_matches:',func_matches);
 					if (func_matches || REACTJS_FUNCTION.test(code)) {
 						if (deepFunctionCheck(func_matches)) {
 							editor.setCursorPos(currentLineNr+1,0);
