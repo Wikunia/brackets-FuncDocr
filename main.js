@@ -699,10 +699,7 @@ define(function (require, exports, module) {
  					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
-                    console.log('code: ',code);
-                    console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
 					var func_matches= FUNCTION_REGEXP.exec(code);
-                    console.log('func_matches:',func_matches);
 					if (func_matches || REACTJS_FUNCTION.test(code)) {
                         if (deepFunctionCheck(func_matches)) {
                             editor.setCursorPos(currentLineNr+1,0);
@@ -760,11 +757,7 @@ define(function (require, exports, module) {
 	 */
 	function deepFunctionCheck(matches) {
 		if (matches) {
-            console.log('Deep function check');
-            console.log(matches[0]);
-            console.log(DEEP_FUNCTION_CHECK.source);
 			var func_begin_matches    = DEEP_FUNCTION_CHECK.exec(matches[0]);
-            console.log(func_begin_matches);
 			// check for things like if,for,foreach,while...
 			if (func_begin_matches) {
 				var noFuncs = PREDEFINED_FUNCTIONS;
