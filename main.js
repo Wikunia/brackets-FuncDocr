@@ -57,9 +57,12 @@ define(function (require, exports, module) {
 	
 	ExtensionUtils.loadStyleSheet(module, 'dialog/css/prefs.css');
 	
+
     var COMMAND_ID          = 'funcdocr';
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
+    var PREDEFINED_FUNCTIONS = ['if','switch','for','foreach','while'];
+    
     var BEFORE_FUNCTION_STARTS =  /[\t ]*/;
     var ONLY_ONE_LINEBREAK = /[\t ]*\s??[\t ]*/;
 	
@@ -764,7 +767,7 @@ define(function (require, exports, module) {
             console.log(func_begin_matches);
 			// check for things like if,for,foreach,while...
 			if (func_begin_matches) {
-				var noFuncs = ['if','for','foreach','while'];
+				var noFuncs = PREDEFINED_FUNCTIONS;
 				if (noFuncs.indexOf(func_begin_matches[1]) >= 0) {
 					return false;	
 				}
