@@ -162,7 +162,12 @@ define(function (require, exports, module) {
 		if (SUPPORTED_LANGS.indexOf(langId) < 0) {
 			return;
 		}
-        insertDocBlock(generateDocBlock(getFunctionSignature()));
+        var signatureObj = getFunctionSignature();
+        if (signatureObj) {
+            insertDocBlock(generateDocBlock(signatureObj));
+        } else {
+            return;   
+        }
     }
 
     /**
@@ -197,6 +202,10 @@ define(function (require, exports, module) {
 			return null;
 		}
 			
+        if (!deepFunctionCheck(matches)) {
+            return null;   
+        }
+        
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
 			var docStartLine = doc.startLine;
@@ -692,26 +701,26 @@ define(function (require, exports, module) {
 					var func_matches= FUNCTION_REGEXP.exec(code);
                     console.log('func_matches:',func_matches);
 					if (func_matches || REACTJS_FUNCTION.test(code)) {
-						if (deepFunctionCheck(func_matches)) {
-							editor.setCursorPos(currentLineNr+1,0);
-							// delete /** and the next empty row
-							editor.document.replaceRange(
-								'',
-								{line:currentLineNr-1,ch:0},
-								{line:currentLineNr+1,ch:0}
-							);
-							handleDocBlock();
-						}
+                        if (deepFunctionCheck(func_matches)) {
+                            editor.setCursorPos(currentLineNr+1,0);
+                            // delete /** and the next empty row
+                            editor.document.replaceRange(
+                                '',
+                                {line:currentLineNr-1,ch:0},
+                                {line:currentLineNr+1,ch:0}
+                            );
+                            handleDocBlock();
+                        }
 					} else { // for reasonable comments by Peter Flynn
 						var nextLine = editor.document.getLine(currentLineNr+1);
 						var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
 							var func_matches= FUNCTION_REGEXP.exec(code);
 							if (func_matches || REACTJS_FUNCTION.test(code)) {
-								if (deepFunctionCheck(func_matches)) {
-									editor.setCursorPos(currentLineNr+2,0);
-									handleDocBlock();
-								}
+                                if (deepFunctionCheck(func_matches)) {
+                                    editor.setCursorPos(currentLineNr+2,0);
+                                    handleDocBlock();
+                                }
 							}
 						}
 					}
