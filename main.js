@@ -211,7 +211,6 @@ define(function (require, exports, module) {
         
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
-            console.log("docSig: ",doc.signature);
 			var docStartLine = doc.startLine;
 			var docSignature = doc.signature;
 
