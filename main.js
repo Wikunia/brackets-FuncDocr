@@ -1,3 +1,4 @@
+/* @flow */
 /*
  * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
  *
@@ -244,7 +245,7 @@ define(function (require, exports, module) {
     }
 
 	function getNormalSignature(signature,editor,position,matches) {
-		var parameters 	= matches[1].split(',');
+		var parameters 	= specialSplitComma(matches[1]);
 
         for (var i = 0; i < parameters.length; ++i) {
             var name = parameters[i].trim();
@@ -340,16 +341,18 @@ define(function (require, exports, module) {
 
 		tags.description = commentTags[0]; // the first (without @ is the description/summary)
         
-        // use every @ feature after the description as an addition as well, if it's neither param nor return
         var t = 1;
-        while(commentTags[t].indexOf('param') == -1 && commentTags[t].indexOf('return') == -1) {
-            tags.description += '\n@'+commentTags[t];
-            t++;
+        if (commentTags.length == 1) {
+			tags.returns = {bool: false};
+		} else {
+            // use every @ feature after the description as an addition as well, if it's neither param nor return
+            while(commentTags.length > t && commentTags[t].indexOf('param') == -1 && commentTags[t].indexOf('return') == -1) {
+                tags.description += '\n@'+commentTags[t];
+                t++;
+            }
         }
         
-		if (commentTags.length == 1) {
-			tags.returns = {bool: false};
-		}
+		
 
 		var params = [];
         // start with the index directly after the description ends
@@ -1284,7 +1287,41 @@ define(function (require, exports, module) {
 		return false;
 	}
 
-	/**
+    function specialSplitComma(input) {
+        var parameters = [];
+        var lastI = 0;
+        var openStringCh = "";
+        var lastStringCh = "";
+        /**
+         * split the input into params (not possible to split by ',' directly)
+         */
+        for(var i = 0; i < input.length; i++) {
+            if ((input[i] == "'" || input[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
+                openStringCh = input[i];   
+                lastStringCh = input[i]; 
+                continue;
+            }        
+            if (input[i] == "'" && openStringCh == "'" && lastStringCh != "\\") {
+                openStringCh = "";      
+            } else if (input[i] == '"' && openStringCh == '"' && lastStringCh != "\\") {
+                openStringCh = "";      
+            } else if (input[i] == "\\" && lastStringCh != "\\") {
+                lastStringCh = "\\";
+                continue;
+            } else if (input[i] == "\\" && lastStringCh == "\\") {
+                lastStringCh = "";
+                continue;
+            } else if (input[i] == "," && openStringCh == "") {
+                parameters.push(input.substring(lastI,i));
+                lastI = i+1;
+            }
+            lastStringCh = input[i]; 
+        } 
+        parameters.push(input.substring(lastI));   
+        return parameters;   
+    }
+    
+    /**
 	 * Check if params are optional and have default values
 	 * @param   {String} code   code of the function
 	 * @param   {Object} params all parameters of the function
@@ -1293,7 +1330,7 @@ define(function (require, exports, module) {
 	function checkParamsOptional(code,params) {
 		if (langId === "php") {
 			code = code.substring(code.indexOf('(')+1,code.indexOf(')'));
-			var parameters = code.split(',');
+            var parameters = specialSplitComma(code);
 			for (var i = 0; i < parameters.length; i++) {
 				params[i].title = params[i].name;
 				var paramParts = params[i].name.split('=');
