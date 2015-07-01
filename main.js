@@ -211,6 +211,7 @@ define(function (require, exports, module) {
         
 		if (docExists) { // try to update the doc block (parameter added or deleted)
 			var doc = getExistingDocSignature(document,position);
+            console.log("docSig: ",doc.signature);
 			var docStartLine = doc.startLine;
 			var docSignature = doc.signature;
 
@@ -339,12 +340,21 @@ define(function (require, exports, module) {
 		var commentTags = lines.join('\n').split(/[\n]\s*@/);
 
 		tags.description = commentTags[0]; // the first (without @ is the description/summary)
+        
+        // use every @ feature after the description as an addition as well, if it's neither param nor return
+        var t = 1;
+        while(commentTags[t].indexOf('param') == -1 && commentTags[t].indexOf('return') == -1) {
+            tags.description += '\n@'+commentTags[t];
+            t++;
+        }
+        
 		if (commentTags.length == 1) {
 			tags.returns = {bool: false};
 		}
 
 		var params = [];
-		for (var i = 1; i < commentTags.length; i++) {
+        // start with the index directly after the description ends
+		for (var i = t; i < commentTags.length; i++) {
 			// get params
 			if (commentTags[i].substr(0,5) === 'param') {
 				var param_parts = commentTags[i].split(/(\s)+/);
