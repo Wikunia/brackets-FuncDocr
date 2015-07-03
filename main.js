@@ -87,13 +87,14 @@ define(function (require, exports, module) {
     var FUNCTION_FORM_NORMAL = new RegExp(
         FUNCTION_PS.source+'?(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
-    
-    var FUNCTION_WO_PARAM   = new RegExp(BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
+        
+    var FUNCTION_WO_PARAM   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
+
     
 	var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
     	
-    var FUNCTION_PARAM     	= /\s*\(([^{};]*)\)\s*{/; // maybe not the best way to get the function parameters (matching brackets)
-	var FUNCTION_REGEXP		= new RegExp('^'+FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source); 
+    var FUNCTION_PARAM     	= /\s*\(([^{};]*)\)\s*{/; // will be validated in checkIfFunction
+	var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source); 
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -711,8 +712,8 @@ define(function (require, exports, module) {
  					// currentLine is empty or *
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
-					var func_matches= FUNCTION_REGEXP.exec(code);
-					if (func_matches || REACTJS_FUNCTION.test(code)) {
+					var func_matches= checkIfFunction(code);
+                    if (func_matches || REACTJS_FUNCTION.test(code)) {
                         if (deepFunctionCheck(func_matches)) {
                             editor.setCursorPos(currentLineNr+1,0);
                             // delete /** and the next empty row
@@ -727,7 +728,7 @@ define(function (require, exports, module) {
 						var nextLine = editor.document.getLine(currentLineNr+1);
 						var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
-							var func_matches= FUNCTION_REGEXP.exec(code);
+							var func_matches= checkIfFunction(code);
 							if (func_matches || REACTJS_FUNCTION.test(code)) {
                                 if (deepFunctionCheck(func_matches)) {
                                     editor.setCursorPos(currentLineNr+2,0);
@@ -761,6 +762,56 @@ define(function (require, exports, module) {
 		}
 		hintOpen = CodeHintManager.isOpen();
 	}
+    
+    /**
+     * Check if the curent line is really a function
+     * @param   {String}        line the maybe function line
+     * @returns {Array|Boolean} false if no function otherwise the a regexp array (FUNCTION_REGEXP)
+     */
+    function checkIfFunction(line) {
+        var result      = FUNCTION_REGEXP.exec(line); 
+        var wo_param    = FUNCTION_WO_PARAM.exec(line); 
+        if (!wo_param) {
+            return false;   
+        }
+        var newLine     = line.substr(wo_param[0].length);
+        var param       = new RegExp('^'+FUNCTION_PARAM.source).exec(newLine);
+        if (!param) {
+            return false;   
+        }
+        param = param[1];
+        
+        var lastI = 0;
+        var openStringCh = "";
+        var lastStringCh = "";
+        var closedBrackets = 0;
+        for (var i = 0; i < param.length; i++) {
+            if ((param[i] == "'" || param[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
+                openStringCh = param[i];   
+                lastStringCh = param[i]; 
+                continue;
+            }        
+            if (param[i] == "'" && openStringCh == "'" && lastStringCh != "\\") {
+                openStringCh = "";      
+            } else if (param[i] == '"' && openStringCh == '"' && lastStringCh != "\\") {
+                openStringCh = "";      
+            } else if (param[i] == "\\" && lastStringCh != "\\") {
+                lastStringCh = "\\";
+                continue;
+            } else if (param[i] == "\\" && lastStringCh == "\\") {
+                lastStringCh = "";
+                continue;
+            } else if (param[i] == ")" && openStringCh == "") {
+                closedBrackets++;
+                lastI = i+1;
+            }
+            lastStringCh = param[i]; 
+        }
+        if (closedBrackets != 0) {
+            return false;        
+        }
+        return result;
+    }
 
 	/**
 	 * Check if the given match is really a function and not an if or for loop
@@ -1287,14 +1338,17 @@ define(function (require, exports, module) {
 		return false;
 	}
 
+    /**
+     * split the input into params (not possible to split by ',' directly)
+     * @param   {String} input 
+     * @returns {Array}  splitted input
+     */
     function specialSplitComma(input) {
         var parameters = [];
         var lastI = 0;
         var openStringCh = "";
         var lastStringCh = "";
-        /**
-         * split the input into params (not possible to split by ',' directly)
-         */
+
         for(var i = 0; i < input.length; i++) {
             if ((input[i] == "'" || input[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
                 openStringCh = input[i];   
