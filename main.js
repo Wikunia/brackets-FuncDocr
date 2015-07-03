@@ -95,6 +95,7 @@ define(function (require, exports, module) {
     	
     var FUNCTION_PARAM     	= /\s*\(([^{};]*)\)\s*{/; // will be validated in checkIfFunction
 	var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source); 
+	var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')'); 
 	
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -769,17 +770,11 @@ define(function (require, exports, module) {
      * @returns {Array|Boolean} false if no function otherwise the a regexp array (FUNCTION_REGEXP)
      */
     function checkIfFunction(line) {
-        var result      = FUNCTION_REGEXP.exec(line); 
-        var wo_param    = FUNCTION_WO_PARAM.exec(line); 
-        if (!wo_param) {
+        var result      = FUNCTION_REGEXP_EXTRA_MATCHES.exec(line); 
+        if (!result) {
             return false;   
         }
-        var newLine     = line.substr(wo_param[0].length);
-        var param       = new RegExp('^'+FUNCTION_PARAM.source).exec(newLine);
-        if (!param) {
-            return false;   
-        }
-        param = param[1];
+        var param = result[2];
         
         var lastI = 0;
         var openStringCh = "";
