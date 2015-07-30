@@ -96,7 +96,7 @@ define(function (require, exports, module) {
     var FUNCTION_PARAM     	= /\s*\(([^{};]*)\)\s*{/; // will be validated in checkIfFunction
 	var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source); 
 	var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')'); 
-	
+	    
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
@@ -108,6 +108,7 @@ define(function (require, exports, module) {
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
 	var DOCBLOCK_PAR_LINE 	= /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
 	var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
+	var DOCBLOCK_AT_LINE 	= /(\s+\*\s+@([a-zA-Z]*)\s+)([^ ]+\s*)/;
 	var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
 	var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)?\s*(.*?)=(.*)/;
@@ -221,6 +222,13 @@ define(function (require, exports, module) {
 			if (docSignature.description != '') {
 				signature.description = docSignature.description;
 			}
+            var docSigKeys = Object.keys(docSignature);
+            for(var k = 0; k < docSigKeys.length; k++) {
+                if (docSigKeys[k] !== 'returns' && docSigKeys[k] !== 'parameters') {
+                    signature[docSigKeys[k]] = docSignature[docSigKeys[k]];
+                }
+            }
+            
 			for (var i = 0; i < docSignature.parameters.length; i++) {
 				var paramIndex = signature.parameters.keyIndexOf('name',docSignature.parameters[i].name);
 				if (paramIndex >= 0) {
@@ -346,13 +354,7 @@ define(function (require, exports, module) {
         var t = 1;
         if (commentTags.length == 1) {
 			tags.returns = {bool: false};
-		} else {
-            // use every @ feature after the description as an addition as well, if it's neither param nor return
-            while(commentTags.length > t && commentTags[t].indexOf('param') == -1 && commentTags[t].indexOf('return') == -1) {
-                tags.description += '\n@'+commentTags[t];
-                t++;
-            }
-        }
+		}
         
 		
 
@@ -441,7 +443,24 @@ define(function (require, exports, module) {
 				param.description = (typeof param.description === "undefined") ? '' : param.description;
 				params.push(param);
 			}
-
+            // get all other specified tags (not param/return) 
+            if (commentTags[i].substr(0,6) !== 'return' && commentTags[i].substr(0,5) !== 'param') {
+                var currentTag = commentTags[i].substr(0,commentTags[i].indexOf(' '));
+                var tabs = getTabsForATag(currentTag);
+                var tagRegex = getRegexForATag(currentTag);
+                var tagTabsMatches = tagRegex.exec('@'+commentTags[i]);
+                if (!(currentTag in tags)) {
+                    tags[currentTag] = [];
+                }
+                var tagTabObj = {};
+                for (var tt = 1; tt < tagTabsMatches.length; tt++) {
+                    tagTabObj[tabs[tt-1]] = tagTabsMatches[tt].trim();   
+                }
+                tags[currentTag].push(tagTabObj);
+            }
+            
+            
+            
 
 			if (commentTags[i].substr(0,6) === 'return') {
 				if (commentTags[i].substr(0,7) === 'returns') {
@@ -498,8 +517,8 @@ define(function (require, exports, module) {
 
         // Determine the longest parameter and the longest type so we can right-pad them
 		var maxPadding = getMaxPadding(signature);
-		var maxParamLength = maxPadding.title;
-        var maxTypeLength = maxPadding.type;
+        var maxTypeLength = maxPadding[1];
+		var maxParamLength = maxPadding[2];
 		
 		// returns or return
 		var returnDocName = 'returns';
@@ -510,6 +529,35 @@ define(function (require, exports, module) {
 		// if returns is set show align the types of params and returns
 		var tagRightSpace = signature.returns.bool ? ' '.times(returnDocName.length-'param'.length+1) : ' ';
 
+        var sigKeys = Object.keys(signature);
+        for (var sk = 0; sk < sigKeys.length; sk++) {
+            var sigKey = sigKeys[sk];
+            if (sigKey !== 'parameters' && sigKey !== 'returns'  && sigKey !== 'indentation' && sigKey !== 'description') {
+                for (var ski = 0; ski < signature[sigKey].length; ski++) {
+                    var cTag = signature[sigKey][ski];
+                    var tagDef = getTagDef(sigKey);
+                    if (!tagDef) {
+                        break;
+                    }
+                    
+                    var outputLine = tagDef.replace(/\[\[([a-zA-Z]*)\]\]/g,function(match,p1) {
+                       return cTag[p1.toLowerCase()];
+                    });
+                    
+                    if ("description" in signature[sigKey][ski]) {
+                        var tagRegex = getRegexForATag(sigKey);
+                        var tagTabsMatches = tagRegex.exec(outputLine);
+                        var length = outputLine.length - tagTabsMatches[tagTabsMatches.length-1].length; 
+                        outputLine = outputLine.replace(/\n/g, function(match) {
+                            return '\n * '+' '.times(length);
+                        });
+                    }
+                    output.push(' * '+ outputLine);
+                }
+            }
+        }
+        
+        
         // Add the parameter lines
         for (var i = 0; i < signature.parameters.length; i++) {
             var parameter = signature.parameters[i];
@@ -575,11 +623,13 @@ define(function (require, exports, module) {
 	/**
 	 * Get the maximum padding for param types and titles
 	 * @param   {Object} signature .parameters,.returns
-	 * @returns {Object} .title,.type
+	 * @returns {Array}  0: maximum length of @... , 1: maximum of first [[]] etc
 	 */
 	function getMaxPadding(signature) {
+        var result = [];
 		var maxParamLength = 0;
 		var maxTypeLength = 0;
+        
 		for (var i = 0; i < signature.parameters.length; i++) {
 			var parameter 	= signature.parameters[i]; // parameter changes => signature changes
 			parameter.type 	= parameter.type ? parameter.type.trim().split(/\n/) : ['[[Type]]'];
@@ -605,10 +655,7 @@ define(function (require, exports, module) {
 				}
 			}
 		}
-		return {
-			title: 	maxParamLength,
-			type:	maxTypeLength
-		}
+		return [8,maxTypeLength,maxParamLength];
 	}
 
 
@@ -881,7 +928,71 @@ define(function (require, exports, module) {
         return boundaryPosition;
     }
 
-
+    /**
+     * Get the the tabs for a tag
+     * @param   {String} tag the name of the tag
+     * @returns {Array}  the tabs like description,type 
+     */
+    function getTabsForATag(tag) {
+        var tagDef = getTagDef(tag);
+        if (!tagDef) {
+            return [];   
+        }
+        
+        var tabs = [];
+        var regex = /\[\[([a-z]*)\]\]/gi;
+        var counter = 0;
+        var tabName;
+        while ((tabName = regex.exec(tagDef)) !== null) {
+            tabs.push(tabName[1].toLowerCase());
+        }
+        return tabs;
+    }
+    
+    /**
+     * Generate a regex for a tag like /@param \[\[([\S])\]\]/ for @param [[Type]]
+     * @param   {String} tag name of the tag
+     * @returns {Array}  regex or false if there is no tag inside the definitions/ folder
+     */
+    function getRegexForATag(tag) {
+        var tagDef = getTagDef(tag);
+        if (!tagDef) {
+            return false;   
+        }
+        
+        var regex = tagDef.replace(/\[\[([a-zA-Z]*)\]\]/g,function(match,p1) {
+            if (p1 == 'Type') {
+                return '(\\S*)';   
+            } else {
+                return '([\\S\\s]*)';   
+            }
+        });
+        return RegExp(regex);
+    }
+    
+    /**
+     * Get the definition for a tag name using the definitions/ folder 
+     * @param   {String}         tag name of the tag
+     * @returns {String|Boolean} def or false if non exists
+     */
+    function getTagDef(tag) {
+        var editor  = EditorManager.getCurrentFullEditor();
+        langId  	= editor.getLanguageForSelection().getId();
+        
+        if (allDefinitions[langId] === undefined) {
+			definitions = allDefinitions.default;
+		} else {
+			definitions = allDefinitions[langId];
+		}
+		
+		var tags = definitions.tags;
+        if (!(tag in tags)) { 
+            return false;
+        }
+        
+        return tags[tag];
+    }
+    
 	// =========================================================================
     // Enter Handling
     // =========================================================================
@@ -926,20 +1037,45 @@ define(function (require, exports, module) {
 			// get the correct wrapper ({} for JS or '' for PHP)
 			var wrapper 		= PARAM_WRAPPERS[langId];
 			var paddingRegex 	= new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+([^ ]+\\s+)');
+			var paddingRegexElse= new RegExp('^(\\s+)\\* @([a-zA-Z]*)\\s+([^ ]+\\s*)');
 			var match 			= paddingRegex.exec(lastLine);
-			var length;
-			// for the second enter there is no * @param or @returns
-			if (!match) {
+			var length          = false;
+            if (!match) {
+                match = paddingRegexElse.exec(lastLine);  
+                // get the number of tabs for the specified jsDoc tag
+                if (match) {
+                    /* var tabs = getTabsForATag(match[2]);
+                    var nrOfTabs = tabs.length;
+                    if (nrOfTabs === 1) {
+                        paddingRegexElse= new RegExp('^(\\s+)\\* @[a-zA-Z]*\\s+([^ ]+\\s*)');
+                    } else {
+                        paddingRegexElse= new RegExp('^(\\s+)\\* @[a-zA-Z]*\\s+([^ ]+\\s+){'+(nrOfTabs-1)+'}([^ ]+\\s*)');
+                    }
+                    match 			= paddingRegexElse.exec(lastLine);
+                    console.log('tabs: ',tabs);*/
+                    
+                    /// current best version
+                    var tagRegex = getRegexForATag(match[2]);
+                    var tagTabsMatches = tagRegex.exec(lastLine);
+                    length = lastLine.length - tagTabsMatches[tagTabsMatches.length-1].length-1;                    
+                }
+            }
+            
+//            console.log('match: ',match);
+			
+			if (match) {
+				if (length === false) {
+                    length 		 = match[0].length-match[1].length;
+                    // there is no title for @returns
+                    if (match.length > 3 && match[2].indexOf('return') == 0) {
+                        length -= match[3].length;
+                    }
+                }
+			} else { // for the second enter there is no * @param or @returns
 				paddingRegex = new RegExp('^(\\s+)\\*\\s+');
 				match 		 = paddingRegex.exec(lastLine);
 				if (match) {
 					length 	 = match[0].length-match[1].length;
-				}
-			} else {
-				length 		 = match[0].length-match[1].length;
-				// there is no title for @returns
-				if (match[2].indexOf('return') == 0) {
-					length -= match[3].length;
 				}
 			}
 			if (match) {
@@ -1017,14 +1153,14 @@ define(function (require, exports, module) {
 	 * @param {Object} editor        brackets editor
 	 * @param {Object} docBlockPos   docBlock position (.start,.end)
 	 * @param {Object} tags          current doc tags
-	 * @param {Object} maxPaddingObj maximum padding (.title,.type)
+	 * @param {Array}  maxPaddingArr maximum padding see {@link getMaxPadding}
 	 */
-	function updatePadding(editor,docBlockPos,tags,maxPaddingObj) {
+	function updatePadding(editor,docBlockPos,tags,maxPaddingArr) {
 		var document = editor.document;
 		var maxPadding = [];
 		var lastMatch = false;
-		maxPadding[0] = maxPaddingObj.type + PARAM_WRAPPERS[langId][0].length + PARAM_WRAPPERS[langId][1].length+1; // one space
-		maxPadding[1] = maxPaddingObj.title + 1; // one space
+		maxPadding[0] = maxPaddingArr[1] + PARAM_WRAPPERS[langId][0].length + PARAM_WRAPPERS[langId][1].length+1; // one space
+		maxPadding[1] = maxPaddingArr[2] + 1; // one space
 		for (var i = docBlockPos.start; i <= docBlockPos.end; i++) {
 			var match;
 			var line         = document.getLine(i);
@@ -1049,14 +1185,14 @@ define(function (require, exports, module) {
 					index 		 = match[0].length;
 
 					currentPadding    = match[3].length;
-					currentMaxPadding = 2+lastMatch.length+1+maxPadding[0]+maxPadding[1]; // 2= ' @' 1 => one space before type
+                    currentMaxPadding = 2+lastMatch.length+1+maxPadding[0]+maxPadding[1]; // 2= ' @' 1 => one space before type
 				}
 				for (var m = 0; m < nrOfPaddings; m++) {
-					if (!index) {
-						if (m == 0)
-							index = match[1].length + match[2].length;
-						else
-							index = match[1].length + maxPadding[0] + match[3].length;
+					if (!index) {                    
+                      if (m == 0)
+                        index = match[1].length + match[2].length;
+                      else
+                        index = match[1].length + maxPadding[0] + match[3].length;
 					}
 					if (!currentPadding) {
 						currentPadding = match[m+2].length;
