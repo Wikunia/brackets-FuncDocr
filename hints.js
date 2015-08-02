@@ -27,6 +27,7 @@ define(['text!definitions/default.json',
         var FUNC_DEFINITION_ROW = /^[\S\s]*?\*\/([\S\s]*?{)/g;
 		var FUNC_DEFINITION	    = /^(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?)|([A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{)/;
 		var REGEX_END			= /(\n|\r|$)/;
+        var DOCBLOCK_EMPTY_BEFORE = /^\s*\*(\s*)$/;
 
 
         /**
@@ -214,7 +215,11 @@ define(['text!definitions/default.json',
             this.removeSelection = (this.removeSelection && this.match !== '') ? false : this.removeSelection;
 
             hints = this.removeWrongHints(hints);
-
+            
+            if (this.implicitChar == '@') {
+                hints.sort(sortTags(this.match));   
+            }
+            
             return {
                 hints: hints,
                 match: this.match,
@@ -223,6 +228,17 @@ define(['text!definitions/default.json',
             };
         };
 
+    
+        function sortTags(match) {
+            return function(a,b) {
+                var matchA = a.indexOf(match);   
+                var matchB = b.indexOf(match);   
+                if (matchA == matchB) return 0;   
+                return (matchA > matchB) ? 1 : -1;   
+            }
+        }
+    
+    
 		/**
 		 * Return the function name for a special row
 		 * Array.prototype.abc = function() { => abc
@@ -299,14 +315,28 @@ define(['text!definitions/default.json',
             // Document objects represent file contents
             var currentDoc = this.editor.document;
 
+            var oldPosCh = this.pos.ch;
+            
             // Where the range end that should be replaced
             var start = {
                 line: this.pos.line,
                 ch: this.pos.ch - this.deleteFirstNChars
             };
+            
+            // if the hint is a '@' tag and the line before is empty => left align the tag
+            if (this.implicitChar == '@') {
+                var lineBefStr = currentDoc.getLine(this.pos.line).substr(0,start.ch);
+                var match = lineBefStr.match(DOCBLOCK_EMPTY_BEFORE);
+                if (match) {
+                    start.ch -= match[1].length-1;
+                    this.pos.ch -= match[1].length-1;
+                }
+            }
+            
+            
             var end = {
                 line: this.pos.line,
-                ch: this.pos.ch + ((this.removeSelection) ? this.selection.length : this.match.length)
+                ch: oldPosCh + ((this.removeSelection) ? this.selection.length : this.match.length)
             };
 
 

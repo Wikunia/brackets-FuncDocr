@@ -1056,8 +1056,12 @@ define(function (require, exports, module) {
                     
                     /// current best version
                     var tagRegex = getRegexForATag(match[2]);
-                    var tagTabsMatches = tagRegex.exec(lastLine);
-                    length = lastLine.length - tagTabsMatches[tagTabsMatches.length-1].length-1;                    
+                    if (tagRegex) {
+                        var tagTabsMatches = tagRegex.exec(lastLine);
+                        length = lastLine.length - tagTabsMatches[tagTabsMatches.length-1].length-1;                    
+                    } else {
+                        match = false;
+                    }
                 }
             }
             
@@ -1166,11 +1170,19 @@ define(function (require, exports, module) {
 			var line         = document.getLine(i);
 			var paramMatch   = DOCBLOCK_PAR_LINE.exec(line);
 			var returnMatch  = DOCBLOCK_RET_LINE.exec(line);
+            var atMatch      = DOCBLOCK_AT_LINE.exec(line);
 			var nrOfPaddings = 2; // for params (for return 1 (no title padding)
 
 			var index             = false;
 			var currentPadding    = false;
 			var currentMaxPadding = false;
+            if ((!paramMatch && !returnMatch) && (atMatch || lastMatch == '@')) {
+                // Trello todo: better padding for other @ lines [55bdeafc5ac7da95998cae75]
+                lastMatch = '@';
+                continue; // don't change the padding for '@' lines at the moment    
+            }
+            
+            
 			if ((paramMatch || returnMatch || lastMatch) && !DOCBLOCK_END.test(line)) {
 				if (paramMatch) {
 					match = paramMatch;
