@@ -274,6 +274,9 @@ define(function (require, exports, module) {
 		// get the function code and returns (Object)
 		var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
 		if (codeTypes) {
+            console.log('throw throws: ',codeTypes.throws);
+            signature.throws = codeTypes.throws;
+            
 			signature.returns = codeTypes.returns;
 			for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
 				signature.parameters[i].type = codeTypes.paramTypes[i];
@@ -536,19 +539,25 @@ define(function (require, exports, module) {
 		var tagRightSpace = signature.returns.bool ? ' '.times(returnDocName.length-'param'.length+1) : ' ';
 
         var sigKeys = Object.keys(signature);
+        console.log('sigKeys: ',sigKeys);
+        
         for (var sk = 0; sk < sigKeys.length; sk++) {
             var sigKey = sigKeys[sk];
-            if (sigKey !== 'parameters' && sigKey !== 'returns'  && sigKey !== 'indentation' && sigKey !== 'description') {
+            if (sigKey !== 'parameters' && sigKey !== 'returns' && sigKey !== 'indentation' && sigKey !== 'description') {
                 for (var ski = 0; ski < signature[sigKey].length; ski++) {
                     var cTag = signature[sigKey][ski];
                     var tagDef = getTagDef(sigKey);
                     if (!tagDef) {
                         break;
                     }
-                    
                     var outputLine = tagDef.replace(/\[\[([a-zA-Z]*)\]\]/g,function(match,p1) {
-                       return cTag[p1.toLowerCase()];
+                        if (p1.toLowerCase() in cTag) {
+                            return cTag[p1.toLowerCase()];
+                        } else {
+                            return '[['+p1+']]';
+                        }
                     });
+                    
                     
                     if ("description" in signature[sigKey][ski]) {
                         var tagRegex = getRegexForATag(sigKey);
@@ -562,6 +571,7 @@ define(function (require, exports, module) {
                 }
             }
         }
+        
         
         
         // Add the parameter lines
@@ -1352,6 +1362,8 @@ define(function (require, exports, module) {
 		
 		var paramIndex;
 		var paramTypes = [];
+        var throws = [];
+        var exTypes = [];
 		
 		if (allDefinitions[langId] === undefined) {
 			definitions = allDefinitions.default;
@@ -1395,6 +1407,22 @@ define(function (require, exports, module) {
 
 
 			switch (char) {
+                // throw ne        
+                case 't':    
+                    if (delimiter == "" && /\sthrow new /.test(code.substr(i-1,11))) {
+                        var matches = /\s*?([\s\S]*?)(\([\s\S]*?\))?;/.exec(code.substr(i+10));
+                        if (matches) {
+                            console.log('matches: ',matches);   
+                            var exType = matches[1].trim();
+                            if (exTypes.indexOf(exType) == -1) {
+                                throws.push({extype: exType});
+                                exTypes.push(exType);
+                            }
+                        }                        
+                    }
+                    break;
+                    
+                // returns?    
 				case 'r':
 					if (delimiter == "" && /\sreturn[\[{ ]/.test(code.substr(i-1,8))) {
 						returns.bool = true;
@@ -1478,7 +1506,8 @@ define(function (require, exports, module) {
 							return {
 								code:code.substr(0,i+1),
 								returns: returns,
-								paramTypes: paramTypes
+								paramTypes: paramTypes,
+                                throws: throws
 							}
 						}
 					}

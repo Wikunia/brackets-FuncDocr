@@ -58,7 +58,7 @@
         "summary": "@summary [[Description]]",
         "this": "@this [[Link]]",
         "todo": "@todo [[Description]]",
-        "throws": "@throws [[Description]]",
+        "throws": "@throws {[[Extype]]} [[Description]]",
         "tutorial": "@tutorial [[Description]]",
         "type": "@type {[[Type]]}",
         "typedef": "@typedef {[[Type]]} [[Description]]",
