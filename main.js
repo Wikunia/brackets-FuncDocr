@@ -71,7 +71,13 @@ define(function (require, exports, module) {
 	var FUNCTION_FORM_OBJ 	= /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
 	var FUNCTION_FORM_CLASS	= /[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
 	var FUNCTION_PS			= /(?:(?:(?:(?:public )?(?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))[\t ]*\s??[\t ]*)/;
-    	
+    
+    var FUNCTION_ES6_66 = /\s*[(]?(\s*|(?:\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*,?)+)[)]?\s*?=>\s*{/;
+    
+    var FUNCTION_FORM_ES6 = new RegExp(
+        FUNCTION_FORM_VAR.source+FUNCTION_ES6_66.source+ONLY_ONE_LINEBREAK.source
+    );
+    
     var FUNCTION_FORM_VAR_COMPLETE = new RegExp(
         FUNCTION_FORM_VAR.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
@@ -101,7 +107,7 @@ define(function (require, exports, module) {
 	var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
     	
     var FUNCTION_PARAM     	= /\s*\(([^{};]*)\)\s*{/; // will be validated in checkIfFunction
-	var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source); 
+	var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6.source); 
 	var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')'); 
 	    
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
@@ -196,9 +202,19 @@ define(function (require, exports, module) {
 		var code 		= editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
         
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
-
+        
+        console.log('code: ',code);
+        console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
 		var matches     = FUNCTION_REGEXP.exec(code);
-			
+        if (!matches) {
+            return null;   
+        }
+        
+        if (!matches[1]) {
+            matches.splice(1,1); 
+        }
+        console.log('matches: ',matches);
+	
 	
         var signature   = {};
 		// defaults
@@ -836,7 +852,10 @@ define(function (require, exports, module) {
     function checkIfFunction(line) {
         var result      = FUNCTION_REGEXP_EXTRA_MATCHES.exec(line); 
         if (!result) {
-            return false;   
+            result      = FUNCTION_REGEXP.exec(line); 
+            if (!result || !result[2]) {
+                return false; 
+            }
         }
         var param = result[2];
         
