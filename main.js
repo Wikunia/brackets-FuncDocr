@@ -791,7 +791,7 @@ define(function (require, exports, module) {
 					var currentLine = editor.document.getLine(currentLineNr);
 					var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
 					var func_matches= checkIfFunction(code);
-                    if (func_matches || REACTJS_FUNCTION.test(code)) {
+                    if (func_matches !== false || REACTJS_FUNCTION.test(code)) {
                         if (deepFunctionCheck(func_matches)) {
                             editor.setCursorPos(currentLineNr+1,0);
                             // delete /** and the next empty row
@@ -807,7 +807,7 @@ define(function (require, exports, module) {
 						var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
 						if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
 							var func_matches= checkIfFunction(code);
-							if (func_matches || REACTJS_FUNCTION.test(code)) {
+							if (func_matches !== false || REACTJS_FUNCTION.test(code)) {
                                 if (deepFunctionCheck(func_matches)) {
                                     editor.setCursorPos(currentLineNr+2,0);
                                     handleDocBlock();
@@ -850,7 +850,7 @@ define(function (require, exports, module) {
         var result      = FUNCTION_REGEXP_EXTRA_MATCHES.exec(line); 
         if (!result) {
             result      = FUNCTION_REGEXP.exec(line); 
-            if (!result || !result[2]) {
+            if (!result || result[2] === false) {
                 return false; 
             }
         }
