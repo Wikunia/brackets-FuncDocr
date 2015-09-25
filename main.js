@@ -203,8 +203,6 @@ define(function (require, exports, module) {
         
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
         
-        console.log('code: ',code);
-        console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
 		var matches     = FUNCTION_REGEXP.exec(code);
         if (!matches) {
             return null;   
@@ -213,7 +211,6 @@ define(function (require, exports, module) {
         if (!matches[1]) {
             matches.splice(1,1); 
         }
-        console.log('matches: ',matches);
 	
 	
         var signature   = {};
