@@ -7,8 +7,7 @@ I would like to use parser to offer better support! At the moment ES6 isn't supp
 Unfortunately I didn't find a parser to support PHP yet :/
 There are two options now:
 Just waiting until I find a parser for PHP or use regexes for PHP and a parser for JS.
-I've several extensions and a lot of other projects and that upgrade will take a lot of time.
-So would be great if you can check out the next section ;)
+I've several extensions and a lot of other projects and that upgrade will take a lot of time. Therefore it would be great if you can check out the next section ;)
 
 ## You're rich?
 You don't need a second yacht and have some coins to spend? Here I am :)
