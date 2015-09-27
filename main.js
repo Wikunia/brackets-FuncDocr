@@ -250,7 +250,7 @@ define(function (require, exports, module) {
             }
             
 			for (var i = 0; i < docSignature.parameters.length; i++) {
-				var paramIndex = signature.parameters.keyIndexOf('name',docSignature.parameters[i].name);
+				var paramIndex = keyIndexOf(signature.parameters,'name',docSignature.parameters[i].name);
 				if (paramIndex >= 0) {
 					if (signature.parameters[paramIndex].optional && signature.parameters[paramIndex].default !== false) {
 						signature.parameters[paramIndex].description = docSignature.parameters[i].description;
@@ -550,7 +550,7 @@ define(function (require, exports, module) {
 		}
 		
 		// if returns is set show align the types of params and returns
-		var tagRightSpace = signature.returns.bool ? ' '.times(returnDocName.length-'param'.length+1) : ' ';
+		var tagRightSpace = signature.returns.bool ? times(' ',returnDocName.length-'param'.length+1) : ' ';
 
         var sigKeys = Object.keys(signature);
         console.log('sigKeys: ',sigKeys);
@@ -578,7 +578,7 @@ define(function (require, exports, module) {
                         var tagTabsMatches = tagRegex.exec(outputLine);
                         var length = outputLine.length - tagTabsMatches[tagTabsMatches.length-1].length; 
                         outputLine = outputLine.replace(/\n/g, function(match) {
-                            return '\n * '+' '.times(length);
+                            return '\n * '+times(' ',length);
                         });
                     }
                     output.push(' * '+ outputLine);
@@ -1486,11 +1486,11 @@ define(function (require, exports, module) {
 						var lookahead = code.charAt(++i);
 						switch (lookahead) {
 							case '/': // comment
-								var endComment = code.regexIndexOf(/\n/,i);
+								var endComment = regexIndexOf(code,/\n/,i);
 								i = endComment > i ? endComment+1 : i;
 								break;
 							case '*': // start of comment (/*)
-								var endComment = code.regexIndexOf(/\*\//,i);
+								var endComment = regexIndexOf(code,/\*\//,i);
 								i = endComment > i ? endComment+2 : i;
 								break;
 							default:
@@ -1624,7 +1624,7 @@ define(function (require, exports, module) {
 				}
 				if ((match[1] == match[2]) && (match[1]  == match[3])) {
 					var variable = match[1];
-					var paramIndex = params.keyIndexOf('name',variable);
+					var paramIndex = keyIndexOf(params,'name',variable);
 					if (paramIndex >= 0) {
 						params[paramIndex].optional = true;
 						params[paramIndex].default = true;
@@ -1639,7 +1639,7 @@ define(function (require, exports, module) {
 				// variable == variable
 				if (match[1] == match[2]) {
 					var variable = match[1];
-					var paramIndex = params.keyIndexOf('name',variable);
+					var paramIndex = keyIndexOf(params,'name',variable);
 					if (paramIndex >= 0) {
 						params[paramIndex].optional = true;
 						params[paramIndex].default = match[3];
@@ -1656,7 +1656,7 @@ define(function (require, exports, module) {
 				// variable == variable
 				if (match[1] == match[2] && (match[1] == match[4] || match[1] == match[5])) {
 					var variable = match[1];
-					var paramIndex = params.keyIndexOf('name',variable);
+					var paramIndex = keyIndexOf(params,'name',variable);
 					if (paramIndex >= 0) {
 						params[paramIndex].optional = true;
 						if (match[3] == '!') {
@@ -1676,8 +1676,8 @@ define(function (require, exports, module) {
 	}
 
 
-	String.prototype.regexIndexOf = function(regex, startpos) {
-		var indexOf = this.substring(startpos || 0).search(regex);
+	function regexIndexOf (string, regex, startpos) {
+		var indexOf = string.substring(startpos || 0).search(regex);
 		return (indexOf >= 0) ? (indexOf + (startpos || 0)) : indexOf;
 	}
 
@@ -1859,12 +1859,12 @@ define(function (require, exports, module) {
 
 	/**
 	 * Find the position of an needle in an array of objects for a special key
+	 * @param   {Array}  array  the array
 	 * @param   {String} key    key which should be checked against the needle
 	 * @param   {String} needle string that should be array[i][key]
 	 * @returns {Number} return the positon i if needle was found otherwise -1
 	 */
-	Array.prototype.keyIndexOf = function(key,needle) {
-		var array = this;
+	function keyIndexOf(array,key,needle) {
 		for (var i = 0; i < array.length; i++) {
 			if (array[i][key] == needle) {
 				return i;
@@ -1875,13 +1875,14 @@ define(function (require, exports, module) {
 	
 	/**
 	 * Return the given string*times
-	 * @param   {Number} times nr of repetition
+	 * @param   {String} string the string that should be used
+	 * @param   {Number} times  nr of repetition
 	 * @returns {String} string,string,...,*times
 	 */
-	String.prototype.times = function(times) {
-		var result = this;
+	function times(string,times) {
+		var result = string;
 		for (var i = 1; i < times; i++) {
-			result += this;	
+			result += string;	
 		}
 		return result;
 	}
