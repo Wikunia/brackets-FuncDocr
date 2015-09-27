@@ -2,6 +2,21 @@
 
 A brackets extension to generate JS/PHPDocs for your functions.
 
+## Important change!
+I would like to use parser to offer better support! At the moment ES6 isn't supported in a good way and everything else are just regular expressions. Sorry I'm still learning :D
+Unfortunately I didn't find a parser to support PHP yet :/
+There are two options now:
+Just waiting until I find a parser for PHP or use regexes for PHP and a parser for JS.
+I've several extensions and a lot of other projects and that upgrade will take a lot of time. Therefore it would be great if you can check out the next section ;)
+
+## You're rich?
+You don't need a second yacht and have some coins to spend? Here I am :)
+
+[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=Wikunia&url=https://github.com/Wikunia/brackets-FuncDocr&title=Brackets-FuncDocr&language=javascript&tags=github&category=software)
+[![Donate! :3](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B5VQXWCZXYN2W)
+
+Current amount: 0.41€ 
+
 ## How to Use
 * Open a JS or PHP file
 * set your cursor on a function declaration
@@ -29,11 +44,7 @@ You will get hints for the `[[Type]]` tag.
 
 Have fun and stay tuned!
 
-## You're rich?
-You don't need a second yacht and have some coins to spend? Here I am :)
 
-[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=Wikunia&url=https://github.com/Wikunia/brackets-FuncDocr&title=Brackets-FuncDocr&language=javascript&tags=github&category=software)
-[![Donate! :3](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B5VQXWCZXYN2W)
 
 
 
