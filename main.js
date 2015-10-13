@@ -1543,7 +1543,10 @@ define(function (require, exports, module) {
         var lastI = 0;
         var openStringCh = "";
         var lastStringCh = "";
-
+        if (!input) {
+            return [];   
+        }
+        
         for(var i = 0; i < input.length; i++) {
             if ((input[i] == "'" || input[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
                 openStringCh = input[i];   
