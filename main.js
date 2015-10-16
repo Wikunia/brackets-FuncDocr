@@ -72,7 +72,7 @@ define(function (require, exports, module) {
 	var FUNCTION_FORM_CLASS	= /[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
 	var FUNCTION_PS			= /(?:(?:(?:(?:public )?(?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))[\t ]*\s??[\t ]*)/;
     
-    var FUNCTION_ES6_66 = /\s*[(]?(\s*|(?:\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*,?)+)[)]?\s*?=>\s*{/;
+    var FUNCTION_ES6_66 = /^\s*[(]?(\s*|(?:\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*,?)+)[)]?\s*?=>\s*{/;
     
     var FUNCTION_FORM_ES6 = new RegExp(
         FUNCTION_FORM_VAR.source+FUNCTION_ES6_66.source+ONLY_ONE_LINEBREAK.source
@@ -98,7 +98,10 @@ define(function (require, exports, module) {
         FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
     
+//    var FUNCTION_FORM_NORMAL_PLUS = /.?/;
+    
     var FUNCTION_NAME = /\s+(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)/;
+//    var FUNCTION_NAME = /.?/;
     
         
     var FUNCTION_WO_PARAM   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_NORMAL_PLUS.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
@@ -106,7 +109,7 @@ define(function (require, exports, module) {
     
 	var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
     	
-    var FUNCTION_PARAM     	= /\s*\(([^{};]*)\)\s*{/; // will be validated in checkIfFunction
+    var FUNCTION_PARAM         = /\s*\(([^{};]*)\)\s*{/; // will be validated in checkIfFunction
 	var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6.source); 
 	var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')'); 
 	    
@@ -168,6 +171,8 @@ define(function (require, exports, module) {
 	var langId;
 	var hintOpen = false; // hintManager not open
 
+    console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
+    
     // =========================================================================
     // Doc Block Generation
     // =========================================================================
@@ -303,7 +308,6 @@ define(function (require, exports, module) {
 		}
 		return signature;
 	}
-	
 	
     function getReactSignature(signature,editor,position,currentLine) {
         var matches     = REACTJS_FUNCTION.exec(currentLine);		
@@ -851,9 +855,13 @@ define(function (require, exports, module) {
         var result      = FUNCTION_REGEXP_EXTRA_MATCHES.exec(line); 
         if (!result) {
             result      = FUNCTION_REGEXP.exec(line); 
-            if (!result || result[2] === false) {
+            if (!result || result.length < 3 || result[2] === false) {
                 return false; 
             }
+        } else {
+            if (result.length < 3 || result[2] === false) {
+                return false; 
+            }   
         }
         var param = result[2];
         
