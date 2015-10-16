@@ -171,7 +171,6 @@ define(function (require, exports, module) {
 	var langId;
 	var hintOpen = false; // hintManager not open
 
-    console.log('FUNCTION_REGEXP: ',FUNCTION_REGEXP);
     
     // =========================================================================
     // Doc Block Generation
@@ -209,7 +208,6 @@ define(function (require, exports, module) {
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
         
 		var matches     = FUNCTION_REGEXP.exec(code);
-        console.log('code: ',code);
         if (!matches) {
             return null;   
         }
@@ -217,7 +215,6 @@ define(function (require, exports, module) {
         if (!matches[1]) {
             matches.splice(1,1); 
         }
-	    console.log('matches: ',matches);
 	
         var signature   = {};
 		// defaults
@@ -558,7 +555,6 @@ define(function (require, exports, module) {
 		var tagRightSpace = signature.returns.bool ? times(' ',returnDocName.length-'param'.length+1) : ' ';
 
         var sigKeys = Object.keys(signature);
-        console.log('sigKeys: ',sigKeys);
         
         for (var sk = 0; sk < sigKeys.length; sk++) {
             var sigKey = sigKeys[sk];
@@ -1438,7 +1434,6 @@ define(function (require, exports, module) {
                     if (delimiter == "" && /\sthrow new /.test(code.substr(i-1,11))) {
                         var matches = /\s*?([\s\S]*?)(\([\s\S]*?\))?;/.exec(code.substr(i+10));
                         if (matches) {
-                            console.log('matches: ',matches);   
                             var exType = matches[1].trim();
                             if (exTypes.indexOf(exType) == -1) {
                                 throws.push({extype: exType});
