@@ -162,6 +162,7 @@ define(function (require, exports, module) {
 	_prefs.definePreference('shortcutMac', 'string', 'Ctrl-Shift-D');
 	_prefs.definePreference('autoindent_enter', 'boolean', true);
 	_prefs.definePreference('autoindent_tab', 'boolean', true);
+	_prefs.definePreference('author_auto', 'boolean', true);
 	_prefs.definePreference('atName', 'string', '');
 
 	var existingKeyBindings;
@@ -526,7 +527,8 @@ define(function (require, exports, module) {
         if (!signature) {
             return null;
         }
-
+        
+        
         var editor  = EditorManager.getCurrentFullEditor();
         var wrapper = PARAM_WRAPPERS[langId];
 
@@ -538,6 +540,18 @@ define(function (require, exports, module) {
 			output.push(' * '+signature.description[d]);
 		}
 
+        var author = _prefs.get('atName');
+        var authors = [];
+        if ("author" in signature) {
+            for (var i = 0; i < signature.author.length; i++) {
+                authors.push(signature.author[i].author);   
+            }
+        }
+        if (_prefs.get('author_auto') && author != '' && 
+            (authors.length == 0 || authors.indexOf(author) < 0)) {
+            output.push(' * @author '+author);    
+        }
+        
         // Determine the longest parameter and the longest type so we can right-pad them
 		var maxPadding = getMaxPadding(signature);
         var maxTypeLength = maxPadding[1];
@@ -1699,6 +1713,11 @@ define(function (require, exports, module) {
 		if (!_prefs.get('autoindent_tab')) {
 			$dialog.find("#cb_autoindent_tab").prop('checked',true);	
 		}
+        
+        if (_prefs.get('author_auto')) {
+			$dialog.find("#cb_author_auto").prop('checked',true);	
+		}
+        
 		var prefsAtName = _prefs.get('atName');
 		if (prefsAtName != '') {			
 			$dialog.find("#atName").val(prefsAtName);
@@ -1735,6 +1754,7 @@ define(function (require, exports, module) {
 				}
 				_prefs.set('autoindent_enter', !$dialog.find("#cb_autoindent_enter").prop('checked'));
 				_prefs.set('autoindent_tab', !$dialog.find("#cb_autoindent_tab").prop('checked'));	
+				_prefs.set('author_auto', $dialog.find("#cb_author_auto").prop('checked'));	
 				_prefs.set('atName', $dialog.find("#atName").val());	
 			}
 		});

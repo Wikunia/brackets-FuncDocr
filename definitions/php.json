@@ -1,5 +1,6 @@
 {
     "tags": {
+        "author": "@author [[Author]]",
 		"createDate": "@createDate [[Date]]",
 		"lastmodifiedBy": "@lastmodifiedBy [[Name]]",
 		"lastmodifiedDate":"@lastmodifiedDate [[Date]]",
