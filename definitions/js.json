@@ -12,7 +12,7 @@
         "constant": "@constant {[[Type]]} [[Description]]",
         "constructs": "@constructs [[Link]]",
         "copyright": "@copyright [[Description]]",
-		"createDate": "@createDate [[Date]]",
+        "createDate": "@createDate [[Date]]",
         "default": "@default [[Description]]",
         "deprecated": "@deprecated [[Description]]",
         "description": "@description [[Description]]",
@@ -29,8 +29,8 @@
         "inheritdoc": "@inheritdoc",
         "inner": "@inner",
         "instance": "@instance",
-		"lastmodifiedBy": "@lastmodifiedBy [[Name]]",
-		"lastmodifiedDate":"@lastmodifiedDate [[Date]]",
+        "lastmodifiedBy": "@lastmodifiedBy [[Name]]",
+        "lastmodifiedDate": "@lastmodifiedDate [[Date]]",
         "lends": "@lends [[Link]]",
         "license": "@license [[License]]",
         "link": "{@link [[Link]] [[Description]]}",
@@ -65,13 +65,13 @@
         "variation": "@variation [[Description]]",
         "version": "@version [[Description]]"
     },
-	"types": {
-			"number": 	"Number",
-			"string": 	"String",
-			"boolean":	"Boolean",
-			"array": 	"Array",
-			"object": 	"Object",
-			"regexp": 	"RegExp",
-			"function": "Function"
-	}
+    "types": {
+        "number": "number",
+        "string": "string",
+        "boolean": "boolean",
+        "array": "Array",
+        "object": "object",
+        "regexp": "RegExp",
+        "function": "function"
+    }
 }
