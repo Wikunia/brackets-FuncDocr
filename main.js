@@ -116,7 +116,7 @@ define(function (require, exports, module) {
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
     var DOCBLOCK_START      = /^\s*\/\*\*?/;
     var DOCBLOCK_MIDDLE     = /^\s*\*/;
-    var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*\s*$/;
+    var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*$/;
     var DOCBLOCK_END        = /^\s*\*\//;
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
@@ -838,8 +838,7 @@ define(function (require, exports, module) {
 
                 // Using DOCBLOCK_MIDDLE_EMPTY, because we only want to remove lines
                 // that are empty.
-                // Need to add a space to the end, because backspace just deleted it
-                if (DOCBLOCK_MIDDLE_EMPTY.test(currentLine + " ")) {
+                if (DOCBLOCK_MIDDLE_EMPTY.test(currentLine)) {
                     var lastLine = editor.document.getLine(currentLineNr-1);
                     editor.document.replaceRange(
 							'',
