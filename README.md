@@ -15,12 +15,12 @@ You don't need a second yacht and have some coins to spend? Here I am :)
 [![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=Wikunia&url=https://github.com/Wikunia/brackets-FuncDocr&title=Brackets-FuncDocr&language=javascript&tags=github&category=software)
 [![Donate! :3](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B5VQXWCZXYN2W)
 
-Current amount: 1.04€ 
+Current amount: 1.04€
 
 ## How to Use
 * Open a JS or PHP file
 * set your cursor on a function declaration
-	* `function cool(stuff)`
+    * `function cool(stuff)`
 * Use the ShortCut `Ctrl-Alt-D` (Win) or `Ctrl-Shift-D` (Mac) to start the documentation or `/**` + Enter
 
 

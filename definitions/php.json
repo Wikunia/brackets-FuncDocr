@@ -1,26 +1,26 @@
 {
     "tags": {
         "author": "@author [[Author]]",
-		"createDate": "@createDate [[Date]]",
-		"lastmodifiedBy": "@lastmodifiedBy [[Name]]",
-		"lastmodifiedDate":"@lastmodifiedDate [[Date]]",
+        "createDate": "@createDate [[Date]]",
+        "lastmodifiedBy": "@lastmodifiedBy [[Name]]",
+        "lastmodifiedDate":"@lastmodifiedDate [[Date]]",
         "link": "@link [[Link]] [[Description]]",
         "param": "@param [[Type]] [[Description]]",
         "return": "@return [[Type]] [[Description]]",
-		"private": "@private",
- 		"protected": "@protected",
- 		"public": "@public",
-		"static": "@static"
+        "private": "@private",
+        "protected": "@protected",
+        "public": "@public",
+        "static": "@static"
     },
-	"types": {
-			"number": 	"integer",
-			"float":	"float",
-			"string": 	"string",
-			"boolean":	"boolean",
-			"array": 	"array",
-			"object": 	"object",
-			"regexp": 	"regExp",
-			"function": "function",
-			"callback": "callback"
-	}
+    "types": {
+        "number":   "integer",
+        "float":    "float",
+        "string":   "string",
+        "boolean":  "boolean",
+        "array":    "array",
+        "object":   "object",
+        "regexp":   "regExp",
+        "function": "function",
+        "callback": "callback"
+    }
 }

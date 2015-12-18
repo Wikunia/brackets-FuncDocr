@@ -1,13 +1,13 @@
 .code {
-	padding: 2px;
-	background-color: #555;
+    padding: 2px;
+    background-color: #555;
 }
 
 #shortcut {
     float: left;
-    margin: 5px 2px;   
+    margin: 5px 2px;
 }
 
 .clearFloat {
-    clear: both;   
+    clear: both;
 }

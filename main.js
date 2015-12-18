@@ -30,7 +30,7 @@
 define(function (require, exports, module) {
     'use strict';
 
-    var AppInit            	= brackets.getModule("utils/AppInit");
+    var AppInit             = brackets.getModule("utils/AppInit");
     var CodeHintManager     = brackets.getModule("editor/CodeHintManager");
     var CommandManager      = brackets.getModule('command/CommandManager');
     var Commands            = brackets.getModule("command/Commands");
@@ -40,19 +40,19 @@ define(function (require, exports, module) {
     var JSUtils             = brackets.getModule("language/JSUtils");
     var KeyBindingManager   = brackets.getModule('command/KeyBindingManager');
     var Menus               = brackets.getModule('command/Menus');
-    var Dialogs				= brackets.getModule('widgets/Dialogs');
-    var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
-    var Menus          		= brackets.getModule("command/Menus");
-    var MainViewManager		= brackets.getModule("view/MainViewManager");
-    var ExtensionUtils		= brackets.getModule('utils/ExtensionUtils');
+    var Dialogs             = brackets.getModule('widgets/Dialogs');
+    var PreferencesManager  = brackets.getModule('preferences/PreferencesManager');
+    var Menus               = brackets.getModule("command/Menus");
+    var MainViewManager     = brackets.getModule("view/MainViewManager");
+    var ExtensionUtils      = brackets.getModule('utils/ExtensionUtils');
 
-    var prefDialogHTML		= require('text!dialog/prefs.html');
+    var prefDialogHTML      = require('text!dialog/prefs.html');
 
-    var allDefinitions 		= {
-         default: 		require('text!definitions/default.json'),
-         javascript: 	require('text!definitions/js.json'),
-         jsx:		 	require('text!definitions/js.json'), // use the js file
-         php: 			require('text!definitions/php.json')
+    var allDefinitions      = {
+         default:    require('text!definitions/default.json'),
+         javascript: require('text!definitions/js.json'),
+         jsx:        require('text!definitions/js.json'), // use the js file
+         php:        require('text!definitions/php.json')
     }
     var definitions;
 
@@ -63,52 +63,52 @@ define(function (require, exports, module) {
     var COMMAND_ID_SETTINGS = 'funcdocr.settings';
 
     var PREDEFINED_FUNCTIONS = ['if','switch','for','foreach','while'];
-    
+
     var BEFORE_FUNCTION_STARTS =  /[\t ]*/;
     var ONLY_ONE_LINEBREAK = /[\t ]*\s??[\t ]*/;
 
-    var FUNCTION_FORM_VAR 	= /(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*\s*=/; // var stuff =
-    var FUNCTION_FORM_OBJ 	= /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
-    var FUNCTION_FORM_CLASS	= /[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
-    var FUNCTION_PS			= /(?:export\s+(?:default|const)?)?(?:(?:(?:(?:public )?(?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))[\t ]*\s??[\t ]*)/;
-    
+    var FUNCTION_FORM_VAR   = /(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*\s*=/; // var stuff =
+    var FUNCTION_FORM_OBJ   = /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
+    var FUNCTION_FORM_CLASS = /[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
+    var FUNCTION_PS         = /(?:export\s+(?:default|const)?)?(?:(?:(?:(?:public )?(?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))[\t ]*\s??[\t ]*)/;
+
     var FUNCTION_ES6_66 = /^\s*[(]?(\s*|(?:\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*,?)+)[)]?\s*?=>\s*\{/;
-    
+
     var FUNCTION_FORM_ES6 = new RegExp(
         FUNCTION_FORM_VAR.source+FUNCTION_ES6_66.source+ONLY_ONE_LINEBREAK.source
     );
-    
+
     var FUNCTION_FORM_VAR_COMPLETE = new RegExp(
         FUNCTION_FORM_VAR.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
-    
+
     var FUNCTION_FORM_OBJ_COMPLETE = new RegExp(
         FUNCTION_FORM_OBJ.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
-    
+
     var FUNCTION_FORM_CLASS_COMPLETE = new RegExp(
         FUNCTION_FORM_CLASS.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
-    
+
     var FUNCTION_FORM_NORMAL = new RegExp(
         FUNCTION_PS.source+'?(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
-        
+
     var FUNCTION_FORM_NORMAL_PLUS = new RegExp(
         FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
-    
-    
+
+
     var FUNCTION_NAME = /\s+(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)/;
-    
-        
+
+
     var FUNCTION_WO_PARAM   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_NORMAL_PLUS.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
 
-    
-    var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
 
-    var FUNCTION_PARAM         = /\s*\(([^{};]*)\)\s*\{/; // will be validated in checkIfFunction
-    var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6.source);
+    var DEEP_FUNCTION_CHECK = new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
+
+    var FUNCTION_PARAM      = /\s*\(([^{};]*)\)\s*\{/; // will be validated in checkIfFunction
+    var FUNCTION_REGEXP     = new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6.source);
     var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')');
 
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
@@ -120,33 +120,33 @@ define(function (require, exports, module) {
     var DOCBLOCK_END        = /^\s*\*\//;
     var DOCBLOCK_FIELD      = /(\[\[[^\]]+\]\])/;
     var DOCBLOCK_LAST_FIELD = /.*(\[\[[^\]]+\]\])/;
-    var DOCBLOCK_PAR_LINE 	= /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
-    var DOCBLOCK_RET_LINE 	= /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
-    var DOCBLOCK_AT_LINE 	= /(\s+\*\s+@([a-zA-Z]*)\s+)([^ ]+\s*)/;
+    var DOCBLOCK_PAR_LINE   = /(\s+\*\s+@param\s+)([^ ]+\s+)([^ ]+\s+)(.*)/;
+    var DOCBLOCK_RET_LINE   = /(\s+\*\s+@returns?\s+)([^ ]+\s+)/;
+    var DOCBLOCK_AT_LINE    = /(\s+\*\s+@([a-zA-Z]*)\s+)([^ ]+\s*)/;
     var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
-    var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)?\s*(.*?)=(.*)/;
-    var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["']undefined["']\s*\)?\s*\?(.*?):(.*)/;
-    var TYPEOF_TRUE_SHORT	= /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)\s*\|\|\s*(\S+)/;
-    var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
+    var TYPEOF_LONG         = /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)?\s*(.*?)=(.*)/;
+    var TYPEOF_SHORT        = /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["']undefined["']\s*\)?\s*\?(.*?):(.*)/;
+    var TYPEOF_TRUE_SHORT   = /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)\s*\|\|\s*(\S+)/;
+    var OR_DEFAULT          = /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
 
-    var SHORTCUT_REGEX		= /^((Cmd|Ctrl|Alt|Shift)-){1,3}\S$/i;
+    var SHORTCUT_REGEX      = /^((Cmd|Ctrl|Alt|Shift)-){1,3}\S$/i;
 
     // reactjs
     var REACTJS_FUNCTION    = new RegExp('^\\s*'+FUNCTION_FORM_VAR.source+'\\s*React\\.createClass\\(\\{');
-    var REACTJS_PROPS	    = /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
+    var REACTJS_PROPS       = /[^a-zA-Z0-9]this\.props\.([a-zA-Z_$][0-9a-zA-Z_$]*)/g;
 
 
-    var PROPERTIES 			= ['arity', 'caller', 'constructor', 'length', 'prototype'];
-    var STRING_FUNCTIONS	= ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
+    var PROPERTIES          = ['arity', 'caller', 'constructor', 'length', 'prototype'];
+    var STRING_FUNCTIONS    = ['charAt', 'charCodeAt', 'codePointAt', 'contains', 'endsWith',
                                'localeCompare', 'match', 'normalize', 'repeat', 'replace', 'search',
                                'split', 'startsWith', 'substr', 'substring', 'toLocaleLowerCase',
                                'toLocaleUpperCase', 'toLowerCase', 'toUpperCase', 'trim', 'valueOf'];
-    var ARRAY_FUNCTIONS		= ['fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift', 'join'];
-    var OBJECT_FUNCTIONS 	= ['create', 'defineProperty', 'defineProperties', 'freeze', 'getOwnPropertyDescriptor',
+    var ARRAY_FUNCTIONS     = ['fill', 'pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift', 'join'];
+    var OBJECT_FUNCTIONS    = ['create', 'defineProperty', 'defineProperties', 'freeze', 'getOwnPropertyDescriptor',
                                'getOwnPropertyNames', 'getOwnPropertySymbols', 'getPrototypeOf', 'isExtensible',
                                'isFrozen', 'isSealed', 'keys', 'preventExtensions', 'seal', 'setPrototypeOf'];
-    var REGEXP_FUNCTIONS 	= ['exec','test'];
+    var REGEXP_FUNCTIONS    = ['exec','test'];
 
     var PARAM_WRAPPERS = {
         'jsx'   : ['{', '}'],
@@ -170,7 +170,7 @@ define(function (require, exports, module) {
     var langId;
     var hintOpen = false; // hintManager not open
 
-    
+
     // =========================================================================
     // Doc Block Generation
     // =========================================================================
@@ -180,7 +180,7 @@ define(function (require, exports, module) {
      */
     function handleDocBlock() {
         var editor      = EditorManager.getCurrentFullEditor();
-        langId  		= editor.getLanguageForSelection().getId();
+        langId          = editor.getLanguageForSelection().getId();
 
         if (SUPPORTED_LANGS.indexOf(langId) < 0) {
             return;
@@ -189,7 +189,7 @@ define(function (require, exports, module) {
         if (signatureObj) {
             insertDocBlock(generateDocBlock(signatureObj));
         } else {
-            return;   
+            return;
         }
     }
 
@@ -202,17 +202,17 @@ define(function (require, exports, module) {
         var position    = editor.getCursorPos();
         var document    = editor.document;
         var lineBefore  = document.getLine(position.line-1);
-        var code 		= editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
-        
+        var code        = editor.document.getRange({ch:0,line:position.line},{ch:0,line:editor.lineCount()});
+
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
-        
+
         var matches     = FUNCTION_REGEXP.exec(code);
         if (!matches) {
-            return null;   
+            return null;
         }
-        
+
         if (!matches[1]) {
-            matches.splice(1,1); 
+            matches.splice(1,1);
         }
 
         var signature   = {};
@@ -232,9 +232,9 @@ define(function (require, exports, module) {
         }
 
         if (!deepFunctionCheck(matches)) {
-            return null;   
+            return null;
         }
-        
+
         if (docExists) { // try to update the doc block (parameter added or deleted)
             var doc = getExistingDocSignature(document,position);
             var docStartLine = doc.startLine;
@@ -250,13 +250,13 @@ define(function (require, exports, module) {
                     signature[docSigKeys[k]] = docSignature[docSigKeys[k]];
                 }
             }
-            
+
             for (var i = 0; i < docSignature.parameters.length; i++) {
                 var paramIndex = keyIndexOf(signature.parameters,'name',docSignature.parameters[i].name);
                 if (paramIndex >= 0) {
                     if (signature.parameters[paramIndex].optional && signature.parameters[paramIndex].default !== false) {
                         signature.parameters[paramIndex].description = docSignature.parameters[i].description;
-                        signature.parameters[paramIndex].type		 = docSignature.parameters[i].type;
+                        signature.parameters[paramIndex].type        = docSignature.parameters[i].type;
                     } else {
                         signature.parameters[paramIndex] = docSignature.parameters[i];
                     }
@@ -277,7 +277,7 @@ define(function (require, exports, module) {
     }
 
     function getNormalSignature(signature,editor,position,matches) {
-        var parameters 	= specialSplitComma(matches[1]);
+        var parameters  = specialSplitComma(matches[1]);
 
         for (var i = 0; i < parameters.length; ++i) {
             var name = parameters[i].trim();
@@ -285,14 +285,14 @@ define(function (require, exports, module) {
             if (name) {
                 signature.parameters.push({name:name,title:name});
             }
-        }		
+        }
 
         // get the function code and returns (Object)
         var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
         if (codeTypes) {
             console.log('throw throws: ',codeTypes.throws);
             signature.throws = codeTypes.throws;
-            
+
             signature.returns = codeTypes.returns;
             for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
                 signature.parameters[i].type = codeTypes.paramTypes[i];
@@ -306,7 +306,7 @@ define(function (require, exports, module) {
     }
 
     function getReactSignature(signature,editor,position,currentLine) {
-        var matches     = REACTJS_FUNCTION.exec(currentLine);		
+        var matches     = REACTJS_FUNCTION.exec(currentLine);
         if (!matches) {
             return false;
         }
@@ -315,7 +315,7 @@ define(function (require, exports, module) {
         var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
 
         var props;
-        var aProps 		= [];
+        var aProps      = [];
         var paramNames  = [];
         while ((props = REACTJS_PROPS.exec(codeTypes.code)) !== null) {
             if (aProps.indexOf(props[1]) < 0) {
@@ -374,12 +374,12 @@ define(function (require, exports, module) {
         var commentTags = lines.join('\n').split(/[\n]\s*@/);
 
         tags.description = commentTags[0]; // the first (without @ is the description/summary)
-        
+
         var t = 1;
         if (commentTags.length == 1) {
             tags.returns = {bool: false};
         }
-        
+
 
 
         var params = [];
@@ -393,20 +393,20 @@ define(function (require, exports, module) {
                 // get the split delimiters
                 var delimiters = param_parts.filter(function(v,i) { return ((i % 2) === 1); });
                 param_parts = param_parts.filter(function(v,i) { return ((i % 2 === 0)); });
-                
+
                 // if the variable is optional it will start with '[' and there might be '=' inside the '['
                 // => change param_parts so that param_parts[2] is the "name" starting with '[' and ending with ']'
                 if (param_parts[2].charAt(0) == '[') {
                     while (param_parts.length >= 4) {
                         if (param_parts[2].charAt(param_parts[2].length-1) == ']') {
-                            break;   
+                            break;
                         }
                         param_parts[2]+=delimiters[3]+param_parts[3];
                         param_parts.splice(3,1);
                         delimiters.splice(3,1);
                     }
                 }
-                    
+
                 // 0 = param, [1 = type], 2 = title 3- = description
                 switch(langId) {
                     case "jsx":
@@ -447,9 +447,9 @@ define(function (require, exports, module) {
                         }
                     break;
                 }
-                param.name		= param_parts[2];
-                param.title 	= param_parts[2];
-                param.optional 	= false;
+                param.name      = param_parts[2];
+                param.title     = param_parts[2];
+                param.optional  = false;
                 if (param.name.charAt(0) == '[' && param.name.charAt(param.name.length-1) == ']') {
                     // remove '[' beginning and ']' at the end
                     param.name = param.name.substr(1,param.name.length-2);
@@ -467,7 +467,7 @@ define(function (require, exports, module) {
                 param.description = (typeof param.description === "undefined") ? '' : param.description;
                 params.push(param);
             }
-            // get all other specified tags (not param/return) 
+            // get all other specified tags (not param/return)
             if (commentTags[i].substr(0,6) !== 'return' && commentTags[i].substr(0,5) !== 'param') {
                 var currentTag = commentTags[i].substr(0,commentTags[i].indexOf(' '));
                 var tabs = getTabsForATag(currentTag);
@@ -478,13 +478,12 @@ define(function (require, exports, module) {
                 }
                 var tagTabObj = {};
                 for (var tt = 1; tt < tagTabsMatches.length; tt++) {
-                    tagTabObj[tabs[tt-1]] = tagTabsMatches[tt].trim();   
+                    tagTabObj[tabs[tt-1]] = tagTabsMatches[tt].trim();
                 }
                 tags[currentTag].push(tagTabObj);
             }
-            
-            
-            
+
+
 
             if (commentTags[i].substr(0,6) === 'return') {
                 if (commentTags[i].substr(0,7) === 'returns') {
@@ -527,8 +526,8 @@ define(function (require, exports, module) {
         if (!signature) {
             return null;
         }
-        
-        
+
+
         var editor  = EditorManager.getCurrentFullEditor();
         var wrapper = PARAM_WRAPPERS[langId];
 
@@ -544,14 +543,14 @@ define(function (require, exports, module) {
         var authors = [];
         if ("author" in signature) {
             for (var i = 0; i < signature.author.length; i++) {
-                authors.push(signature.author[i].author);   
+                authors.push(signature.author[i].author);
             }
         }
-        if (_prefs.get('author_auto') && author != '' && 
+        if (_prefs.get('author_auto') && author != '' &&
             (authors.length == 0 || authors.indexOf(author) < 0)) {
-            output.push(' * @author '+author);    
+            output.push(' * @author '+author);
         }
-        
+
         // Determine the longest parameter and the longest type so we can right-pad them
         var maxPadding = getMaxPadding(signature);
         var maxTypeLength = maxPadding[1];
@@ -567,7 +566,7 @@ define(function (require, exports, module) {
         var tagRightSpace = signature.returns.bool ? times(' ',returnDocName.length-'param'.length+1) : ' ';
 
         var sigKeys = Object.keys(signature);
-        
+
         for (var sk = 0; sk < sigKeys.length; sk++) {
             var sigKey = sigKeys[sk];
             if (sigKey !== 'parameters' && sigKey !== 'returns' && sigKey !== 'indentation' && sigKey !== 'description') {
@@ -584,12 +583,12 @@ define(function (require, exports, module) {
                             return '[['+p1+']]';
                         }
                     });
-                    
-                    
+
+
                     if ("description" in signature[sigKey][ski]) {
                         var tagRegex = getRegexForATag(sigKey);
                         var tagTabsMatches = tagRegex.exec(outputLine);
-                        var length = outputLine.length - tagTabsMatches[tagTabsMatches.length-1].length; 
+                        var length = outputLine.length - tagTabsMatches[tagTabsMatches.length-1].length;
                         outputLine = outputLine.replace(/\n/g, function(match) {
                             return '\n * '+times(' ',length);
                         });
@@ -598,21 +597,21 @@ define(function (require, exports, module) {
                 }
             }
         }
-        
-        
-        
+
+
+
         // Add the parameter lines
         for (var i = 0; i < signature.parameters.length; i++) {
             var parameter = signature.parameters[i];
 
-            parameter.description 	= parameter.description	? parameter.description.split(/\n/) : ['[[Description]]'];
+            parameter.description   = parameter.description ? parameter.description.split(/\n/) : ['[[Description]]'];
 
             // get the right spaces for title and type
-            parameter.titleRightSpace	= new Array(maxParamLength + 2 - parameter.title.length).join(' ');
+            parameter.titleRightSpace   = new Array(maxParamLength + 2 - parameter.title.length).join(' ');
 
              // singleline
             if (parameter.type.length == 1) {
-                parameter.typeRightSpace 	= new Array(maxTypeLength + 2 - parameter.type[0].length).join(' ');
+                parameter.typeRightSpace    = new Array(maxTypeLength + 2 - parameter.type[0].length).join(' ');
                 output.push(' * @param'+ tagRightSpace + wrapper[0] + parameter.type[0] + wrapper[1] +
                             parameter.typeRightSpace + parameter.title + parameter.titleRightSpace +parameter.description[0]);
             } else { // multiline
@@ -621,7 +620,7 @@ define(function (require, exports, module) {
                 for (var t = 0; t < parameter.type.length; t++) {
                     output.push(' *   ' + parameter.typeIndent + parameter.type[t]);
                 }
-                parameter.typeRightSpace 	= new Array(maxTypeLength+2).join(' ');
+                parameter.typeRightSpace    = new Array(maxTypeLength+2).join(' ');
                 output.push(' * ' + parameter.typeIndent + wrapper[1] +
                             parameter.typeRightSpace + parameter.title + parameter.titleRightSpace +parameter.description[0]);
             }
@@ -672,10 +671,10 @@ define(function (require, exports, module) {
         var result = [];
         var maxParamLength = 0;
         var maxTypeLength = 0;
-        
+
         for (var i = 0; i < signature.parameters.length; i++) {
-            var parameter 	= signature.parameters[i]; // parameter changes => signature changes
-            parameter.type 	= parameter.type ? parameter.type.trim().split(/\n/) : ['[[Type]]'];
+            var parameter  = signature.parameters[i]; // parameter changes => signature changes
+            parameter.type = parameter.type ? parameter.type.trim().split(/\n/) : ['[[Type]]'];
 
             if (parameter.title.length > maxParamLength) {
                 maxParamLength = parameter.title.length;
@@ -690,7 +689,7 @@ define(function (require, exports, module) {
         }
 
         if (signature.returns.bool) {
-            signature.returns.type 	= signature.returns.type ? signature.returns.type.trim().split(/\n/) : ['[[Type]]'];
+            signature.returns.type = signature.returns.type ? signature.returns.type.trim().split(/\n/) : ['[[Type]]'];
             // check every line
             for (var p = 0; p < signature.returns.type.length; p++) {
                 if (signature.returns.type[p].length > maxTypeLength) {
@@ -726,7 +725,7 @@ define(function (require, exports, module) {
 
 
 
-        
+
 
         // Start at the first line, just before [[Description]]
         var lines         = docBlock.split('\n');
@@ -737,8 +736,8 @@ define(function (require, exports, module) {
 
         // jump to te first [[Tag]]
         var docBlockPos = {
-            start: 	startPosition.line-1,
-            end:	endPosition.line-1
+            start: startPosition.line-1,
+            end:   endPosition.line-1
         };
         var nextField = getNextField({start:startPosition,end:startPosition},false,docBlockPos);
 
@@ -748,18 +747,18 @@ define(function (require, exports, module) {
 
         MainViewManager.focusActivePane();
     }
-    
+
     // =========================================================================
     // Click Handling
     // =========================================================================
-    
+
     /**
      * Handle the click event, allowing selecting of fields within doc block
      * @param {Object} event click event
      */
     function handleClick(event) {
         var editor  = EditorManager.getCurrentFullEditor();
-        langId  	= editor.getLanguageForSelection().getId();
+        langId      = editor.getLanguageForSelection().getId();
         var selection = editor.getSelection();
         if (event.type === 'dblclick') {
             var docBlockPos = insideDocBlock(getPosition(selection,false));
@@ -778,7 +777,7 @@ define(function (require, exports, module) {
      */
     function handleKey(event) {
         var editor  = EditorManager.getCurrentFullEditor();
-        langId  	= editor.getLanguageForSelection().getId();
+        langId      = editor.getLanguageForSelection().getId();
 
         if (SUPPORTED_LANGS.indexOf(langId) < 0) {
             return;
@@ -791,18 +790,18 @@ define(function (require, exports, module) {
             var docBlockPos = insideDocBlock(getPosition(selection,backward));
             if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
                 handleTab(editor,event,docBlockPos);
-            } else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) {	// no docBlock needed (check it later)
+            } else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) { // no docBlock needed (check it later)
                 // Check for /** in the current line
                 var currentLineNr = editor.getCursorPos().line;
                 // line - 1 because this triggers after the enter
-                var lastLine 	  = editor.document.getLine(currentLineNr-1);
-                var nextLine 	  = editor.document.getLine(currentLineNr+1);
+                var lastLine      = editor.document.getLine(currentLineNr-1);
+                var nextLine      = editor.document.getLine(currentLineNr+1);
 
                 // last part (the OR) is for the reasonable comments extension by Peter Flynn
                 if (DOCBLOCK_START.test(lastLine) && (!DOCBLOCK_MIDDLE.test(nextLine) || DOCBLOCK_END.test(nextLine))) {
                     // currentLine is empty or *
                     var currentLine = editor.document.getLine(currentLineNr);
-                    var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
+                    var code        = editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
                     var func_matches= checkIfFunction(code);
                     if (func_matches !== false || REACTJS_FUNCTION.test(code)) {
                         if (deepFunctionCheck(func_matches)) {
@@ -817,7 +816,7 @@ define(function (require, exports, module) {
                         }
                     } else { // for reasonable comments by Peter Flynn
                         var nextLine = editor.document.getLine(currentLineNr+1);
-                        var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
+                        var code     = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
                         if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
                             var func_matches= checkIfFunction(code);
                             if (func_matches !== false || REACTJS_FUNCTION.test(code)) {
@@ -852,40 +851,40 @@ define(function (require, exports, module) {
         }
         hintOpen = CodeHintManager.isOpen();
     }
-    
+
     /**
      * Check if the curent line is really a function
      * @param   {String}        line the maybe function line
      * @returns {Array|Boolean} false if no function otherwise the a regexp array (FUNCTION_REGEXP)
      */
     function checkIfFunction(line) {
-        var result      = FUNCTION_REGEXP_EXTRA_MATCHES.exec(line); 
+        var result      = FUNCTION_REGEXP_EXTRA_MATCHES.exec(line);
         if (!result) {
-            result      = FUNCTION_REGEXP.exec(line); 
+            result      = FUNCTION_REGEXP.exec(line);
             if (!result || result.length < 3 || result[2] === false) {
-                return false; 
+                return false;
             }
         } else {
             if (result.length < 3 || result[2] === false) {
-                return false; 
-            }   
+                return false;
+            }
         }
         var param = result[2];
-        
+
         var lastI = 0;
         var openStringCh = "";
         var lastStringCh = "";
         var closedBrackets = 0;
         for (var i = 0; i < param.length; i++) {
             if ((param[i] == "'" || param[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
-                openStringCh = param[i];   
-                lastStringCh = param[i]; 
+                openStringCh = param[i];
+                lastStringCh = param[i];
                 continue;
-            }        
+            }
             if (param[i] == "'" && openStringCh == "'" && lastStringCh != "\\") {
-                openStringCh = "";      
+                openStringCh = "";
             } else if (param[i] == '"' && openStringCh == '"' && lastStringCh != "\\") {
-                openStringCh = "";      
+                openStringCh = "";
             } else if (param[i] == "\\" && lastStringCh != "\\") {
                 lastStringCh = "\\";
                 continue;
@@ -896,10 +895,10 @@ define(function (require, exports, module) {
                 closedBrackets++;
                 lastI = i+1;
             }
-            lastStringCh = param[i]; 
+            lastStringCh = param[i];
         }
         if (closedBrackets != 0) {
-            return false;        
+            return false;
         }
         return result;
     }
@@ -944,7 +943,7 @@ define(function (require, exports, module) {
         }
         return position;
     }
-    
+
     /**
      * Finds the word boundary based on current selection, useful to evaluate current selection.
      * @param   {Object}   position
@@ -973,21 +972,21 @@ define(function (require, exports, module) {
                 break;
             }
         }
-        
+
         return boundaryPosition;
     }
 
     /**
      * Get the the tabs for a tag
      * @param   {String} tag the name of the tag
-     * @returns {Array}  the tabs like description,type 
+     * @returns {Array}  the tabs like description,type
      */
     function getTabsForATag(tag) {
         var tagDef = getTagDef(tag);
         if (!tagDef) {
-            return [];   
+            return [];
         }
-        
+
         var tabs = [];
         var regex = /\[\[([a-z]*)\]\]/gi;
         var counter = 0;
@@ -997,7 +996,7 @@ define(function (require, exports, module) {
         }
         return tabs;
     }
-    
+
     /**
      * Generate a regex for a tag like /@param \[\[([\S])\]\]/ for @param [[Type]]
      * @param   {String} tag name of the tag
@@ -1006,28 +1005,28 @@ define(function (require, exports, module) {
     function getRegexForATag(tag) {
         var tagDef = getTagDef(tag);
         if (!tagDef) {
-            return false;   
+            return false;
         }
-        
+
         var regex = tagDef.replace(/\[\[([a-zA-Z]*)\]\]/g,function(match,p1) {
             if (p1 == 'Type') {
-                return '(\\S*)';   
+                return '(\\S*)';
             } else {
-                return '([\\S\\s]*)';   
+                return '([\\S\\s]*)';
             }
         });
         return RegExp(regex);
     }
-    
+
     /**
-     * Get the definition for a tag name using the definitions/ folder 
+     * Get the definition for a tag name using the definitions/ folder
      * @param   {String}         tag name of the tag
      * @returns {String|Boolean} def or false if non exists
      */
     function getTagDef(tag) {
         var editor  = EditorManager.getCurrentFullEditor();
-        langId  	= editor.getLanguageForSelection().getId();
-        
+        langId      = editor.getLanguageForSelection().getId();
+
         if (allDefinitions[langId] === undefined) {
             definitions = allDefinitions.default;
         } else {
@@ -1035,13 +1034,13 @@ define(function (require, exports, module) {
         }
 
         var tags = definitions.tags;
-        if (!(tag in tags)) { 
+        if (!(tag in tags)) {
             return false;
         }
-        
+
         return tags[tag];
     }
-    
+
     // =========================================================================
     // Enter Handling
     // =========================================================================
@@ -1051,10 +1050,10 @@ define(function (require, exports, module) {
      * @param {editor} editor Brackets editor
      */
     function handleEnter(editor,abc,def) {
-        var editor  	= EditorManager.getCurrentFullEditor();
-        var document 	= editor.document;
-        var position	= editor.getCursorPos();
-        var lastLine 	= document.getLine(position.line-1); // before enter
+        var editor      = EditorManager.getCurrentFullEditor();
+        var document    = editor.document;
+        var position    = editor.getCursorPos();
+        var lastLine    = document.getLine(position.line-1); // before enter
         var currentLine = document.getLine(position.line); // after enter
         if (_prefs.get('autoindent_enter')) {
             enterAfter(editor,lastLine,currentLine,position);
@@ -1084,13 +1083,13 @@ define(function (require, exports, module) {
 
 
             // get the correct wrapper ({} for JS or '' for PHP)
-            var wrapper 		= PARAM_WRAPPERS[langId];
-            var paddingRegex 	= new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+([^ ]+\\s+)');
-            var paddingRegexElse= new RegExp('^(\\s+)\\* @([a-zA-Z]*)\\s+([^ ]+\\s*)');
-            var match 			= paddingRegex.exec(lastLine);
-            var length          = false;
+            var wrapper          = PARAM_WRAPPERS[langId];
+            var paddingRegex     = new RegExp('^(\\s+)\\* @(param|returns?)\\s+'+wrapper[0]+'.+'+wrapper[1]+'\\s+([^ ]+\\s+)');
+            var paddingRegexElse = new RegExp('^(\\s+)\\* @([a-zA-Z]*)\\s+([^ ]+\\s*)');
+            var match            = paddingRegex.exec(lastLine);
+            var length           = false;
             if (!match) {
-                match = paddingRegexElse.exec(lastLine);  
+                match = paddingRegexElse.exec(lastLine);
                 // get the number of tabs for the specified jsDoc tag
                 if (match) {
                     /* var tabs = getTabsForATag(match[2]);
@@ -1100,25 +1099,25 @@ define(function (require, exports, module) {
                     } else {
                         paddingRegexElse= new RegExp('^(\\s+)\\* @[a-zA-Z]*\\s+([^ ]+\\s+){'+(nrOfTabs-1)+'}([^ ]+\\s*)');
                     }
-                    match 			= paddingRegexElse.exec(lastLine);
+                    match           = paddingRegexElse.exec(lastLine);
                     console.log('tabs: ',tabs);*/
-                    
+
                     /// current best version
                     var tagRegex = getRegexForATag(match[2]);
                     if (tagRegex) {
                         var tagTabsMatches = tagRegex.exec(lastLine);
-                        length = lastLine.length - tagTabsMatches[tagTabsMatches.length-1].length-1;                    
+                        length = lastLine.length - tagTabsMatches[tagTabsMatches.length-1].length-1;
                     } else {
                         match = false;
                     }
                 }
             }
-            
+
 //            console.log('match: ',match);
 
             if (match) {
                 if (length === false) {
-                    length 		 = match[0].length-match[1].length;
+                    length     = match[0].length-match[1].length;
                     // there is no title for @returns
                     if (match.length > 3 && match[2].indexOf('return') == 0) {
                         length -= match[3].length;
@@ -1126,9 +1125,9 @@ define(function (require, exports, module) {
                 }
             } else { // for the second enter there is no * @param or @returns
                 paddingRegex = new RegExp('^(\\s+)\\*\\s+');
-                match 		 = paddingRegex.exec(lastLine);
+                match        = paddingRegex.exec(lastLine);
                 if (match) {
-                    length 	 = match[0].length-match[1].length;
+                    length   = match[0].length-match[1].length;
                 }
             }
             if (match) {
@@ -1144,11 +1143,11 @@ define(function (require, exports, module) {
             }
         }
     }
-    
+
     // =========================================================================
     // Double click Handling
     // =========================================================================
-    
+
     /**
      * Handle double clicking within a doc block
      * @param {editor} editor      Brackets editor
@@ -1161,7 +1160,7 @@ define(function (require, exports, module) {
         var position = getPosition(selection, false);
 
         selectField(editor, position);
-    } 
+    }
 
     // =========================================================================
     // Tab Handling
@@ -1178,7 +1177,7 @@ define(function (require, exports, module) {
         var backward  = event.shiftKey;
         var document  = editor.document;
         // get current doc block
-        var doc 	  = document.getRange({
+        var doc       = document.getRange({
                             line: docBlockPos.start+1, // without /**
                             ch: 0
                         },{
@@ -1228,22 +1227,22 @@ define(function (require, exports, module) {
             if ((!paramMatch && !returnMatch) && (atMatch || lastMatch == '@')) {
                 // Trello todo: better padding for other @ lines [55bdeafc5ac7da95998cae75]
                 lastMatch = '@';
-                continue; // don't change the padding for '@' lines at the moment    
+                continue; // don't change the padding for '@' lines at the moment
             }
-            
-            
+
+
             if ((paramMatch || returnMatch || lastMatch) && !DOCBLOCK_END.test(line)) {
                 if (paramMatch) {
                     match = paramMatch;
                     lastMatch = 'param';
                 } else if (returnMatch) {
-                    match 		 = returnMatch;
-                    lastMatch 	 = match[1].indexOf('returns') >= 0 ? 'returns' : 'return';
+                    match        = returnMatch;
+                    lastMatch    = match[1].indexOf('returns') >= 0 ? 'returns' : 'return';
                     nrOfPaddings = 1;
                 } else {
                     nrOfPaddings = 1;
-                    match 		 = DOCBLOCK_MULTI_LINE.exec(line);
-                    index 		 = match[0].length;
+                    match        = DOCBLOCK_MULTI_LINE.exec(line);
+                    index        = match[0].length;
 
                     currentPadding    = match[3].length;
                     currentMaxPadding = 2+lastMatch.length+1+maxPadding[0]+maxPadding[1]; // 2= ' @' 1 => one space before type
@@ -1286,7 +1285,7 @@ define(function (require, exports, module) {
                         );
                     }
                     // reset variables for the next loop pass
-                    index 			  = false;
+                    index             = false;
                     currentPadding    = false;
                     currentMaxPadding = false;
                 }
@@ -1295,7 +1294,7 @@ define(function (require, exports, module) {
     }
 
     /**
-     * Gets the	next tabbable field within the doc block based on the cursor's position
+     * Gets the next tabbable field within the doc block based on the cursor's position
      * @param   {Object}  selection   selected Text position {start<.ch,.line>,end<.ch,.line>}
      * @param   {Boolean} backward    Set to true to search backward
      * @param   {Object}  docBlockPos start and end position of the docBlock
@@ -1303,13 +1302,13 @@ define(function (require, exports, module) {
      * @returns {array}   start position,end position (.ch,.line)
      */
     function getNextField(selection, backward, docBlockPos, stop) {
-        var editor    	= EditorManager.getCurrentFullEditor();
-        var document 	= editor.document;
-        var lineCount 	= editor.lineCount();
+        var editor      = EditorManager.getCurrentFullEditor();
+        var document    = editor.document;
+        var lineCount   = editor.lineCount();
 
-        var position	= getPosition(selection,backward);
-        var start 		= docBlockPos.start;
-        var end 		= docBlockPos.end;
+        var position    = getPosition(selection,backward);
+        var start       = docBlockPos.start;
+        var end         = docBlockPos.end;
 
         // Search for the next field
         var limit     = backward ? position.line - start : end - position.line;
@@ -1440,8 +1439,8 @@ define(function (require, exports, module) {
 
 
             switch (char) {
-                // throw ne        
-                case 't':    
+                // throw ne
+                case 't':
                     if (delimiter == "" && /\sthrow new /.test(code.substr(i-1,11))) {
                         var matches = /\s*?([\s\S]*?)(\([\s\S]*?\))?;/.exec(code.substr(i+10));
                         if (matches) {
@@ -1450,11 +1449,11 @@ define(function (require, exports, module) {
                                 throws.push({extype: exType});
                                 exTypes.push(exType);
                             }
-                        }                        
+                        }
                     }
                     break;
-                    
-                // returns?    
+
+                // returns?
                 case 'r':
                     if (delimiter == "" && /\sreturn[\[{ ]/.test(code.substr(i-1,8))) {
                         returns.bool = true;
@@ -1550,7 +1549,7 @@ define(function (require, exports, module) {
 
     /**
      * split the input into params (not possible to split by ',' directly)
-     * @param   {String} input 
+     * @param   {String} input
      * @returns {Array}  splitted input
      */
     function specialSplitComma(input) {
@@ -1559,19 +1558,19 @@ define(function (require, exports, module) {
         var openStringCh = "";
         var lastStringCh = "";
         if (!input) {
-            return [];   
+            return [];
         }
-        
+
         for(var i = 0; i < input.length; i++) {
             if ((input[i] == "'" || input[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
-                openStringCh = input[i];   
-                lastStringCh = input[i]; 
+                openStringCh = input[i];
+                lastStringCh = input[i];
                 continue;
-            }        
+            }
             if (input[i] == "'" && openStringCh == "'" && lastStringCh != "\\") {
-                openStringCh = "";      
+                openStringCh = "";
             } else if (input[i] == '"' && openStringCh == '"' && lastStringCh != "\\") {
-                openStringCh = "";      
+                openStringCh = "";
             } else if (input[i] == "\\" && lastStringCh != "\\") {
                 lastStringCh = "\\";
                 continue;
@@ -1582,12 +1581,12 @@ define(function (require, exports, module) {
                 parameters.push(input.substring(lastI,i));
                 lastI = i+1;
             }
-            lastStringCh = input[i]; 
-        } 
-        parameters.push(input.substring(lastI));   
-        return parameters;   
+            lastStringCh = input[i];
+        }
+        parameters.push(input.substring(lastI));
+        return parameters;
     }
-    
+
     /**
      * Check if params are optional and have default values
      * @param   {String} code   code of the function
@@ -1602,10 +1601,10 @@ define(function (require, exports, module) {
                 params[i].title = params[i].name;
                 var paramParts = params[i].name.split('=');
                 if (paramParts.length == 2) {
-                    params[i].title		= '['+params[i].title+']';
-                    params[i].optional 	= true;
-                    params[i].default 	= paramParts[1];
-                    params[i].name 		= paramParts[0];
+                    params[i].title    = '['+params[i].title+']';
+                    params[i].optional = true;
+                    params[i].default  = paramParts[1];
+                    params[i].name     = paramParts[0];
                 }
             }
             return params;
@@ -1623,17 +1622,17 @@ define(function (require, exports, module) {
             expressions[i] = expressions[i].trim();
             // TYPEOF_SHORT_TRUE =>
             // variable = typeof variable === "undefined" || variable
-            var matchTrueShort 	= TYPEOF_TRUE_SHORT.exec(expressions[i]);
+            var matchTrueShort = TYPEOF_TRUE_SHORT.exec(expressions[i]);
 
             // TYPEOF_LONG =>
             // if typeof variable ===? undefined variable = default
-            var matchLong 	= TYPEOF_LONG.exec(expressions[i]);
+            var matchLong = TYPEOF_LONG.exec(expressions[i]);
             // TYPEOF_SHORT =>
             // variable = typeof variable === "undefined" ? variable : default
             // or variable = typeof variable !== "undefined" ? default : variable
-            var matchShort 	= TYPEOF_SHORT.exec(expressions[i]);
+            var matchShort = TYPEOF_SHORT.exec(expressions[i]);
             // or variable = variable || default
-            var matchOr		= OR_DEFAULT.exec(expressions[i]);
+            var matchOr    = OR_DEFAULT.exec(expressions[i]);
             var match;
             if (matchTrueShort) {
                 match = matchTrueShort;
@@ -1704,7 +1703,7 @@ define(function (require, exports, module) {
      */
     function openPrefDialog() {
         var dialog = Dialogs.showModalDialogUsingTemplate(prefDialogHTML),
-            $dialog	= dialog.getElement();
+            $dialog = dialog.getElement();
 
         if (!_prefs.get('autoindent_enter')) {
             $dialog.find("#cb_autoindent_enter").prop('checked',true);
@@ -1712,11 +1711,11 @@ define(function (require, exports, module) {
         if (!_prefs.get('autoindent_tab')) {
             $dialog.find("#cb_autoindent_tab").prop('checked',true);
         }
-        
+
         if (_prefs.get('author_auto')) {
             $dialog.find("#cb_author_auto").prop('checked',true);
         }
-        
+
         var prefsAtName = _prefs.get('atName');
         if (prefsAtName != '') {
             $dialog.find("#atName").val(prefsAtName);
@@ -1726,7 +1725,7 @@ define(function (require, exports, module) {
         if (_prefs.get('shortcut') in existingKeyBindings) {
             $dialog.find("#shortcutError").html('This shortcut is already in use, please choose another');
         }
-        
+
         $dialog.find("#shortcut").val(_prefs.get('shortcut')).on('input', function () {
             if (!SHORTCUT_REGEX.test($(this).val())) {
                 $dialog.find("#shortcutError").html('Please enter a valid shortcut!');
@@ -1845,7 +1844,7 @@ define(function (require, exports, module) {
         editor.setSelection(posStart, posEnd, true, 1);
         CommandManager.execute(Commands.SHOW_CODE_HINTS);
     }
-    
+
     /**
      * Selects a given field based on the current position in the document
      * @param {Object}   editor
@@ -1869,8 +1868,8 @@ define(function (require, exports, module) {
                     endPosition.ch += 1;
                     // Start with endPosition to ensure the selected cursor is at the start of the field
                     setSelection(editor, endPosition, startPosition);
-                    event.preventDefault(); 
-                }   
+                    event.preventDefault();
+                }
             }
         }
     }
@@ -1917,9 +1916,9 @@ define(function (require, exports, module) {
         for (var i = 0; i < defKeys.length; i++) {
             allDefinitions[defKeys[i]] = JSON.parse(allDefinitions[defKeys[i]]);
         }
-        allDefinitions.jsx			= allDefinitions.javascript;
+        allDefinitions.jsx          = allDefinitions.javascript;
         allDefinitions.coffeescript = allDefinitions.javascript;
-        allDefinitions.livescript 	= allDefinitions.javascript;
+        allDefinitions.livescript   = allDefinitions.javascript;
 
 
         CommandManager.register('Funcdocr Annotate', COMMAND_ID, handleDocBlock);

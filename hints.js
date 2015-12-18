@@ -7,7 +7,7 @@ define(['text!definitions/default.json',
     function (defaultDef, javascriptDef, phpDef) {
         var DocumentManager     = brackets.getModule('document/DocumentManager');
         var EditorManager       = brackets.getModule('editor/EditorManager');
-        var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
+        var PreferencesManager  = brackets.getModule('preferences/PreferencesManager');
 
         /**
          * Parse Documentation Definitions, used to populate tag suggestions
@@ -17,16 +17,16 @@ define(['text!definitions/default.json',
             javascript: JSON.parse(javascriptDef),
             php: JSON.parse(phpDef)
         };
-        DOC_DEFINITIONS.jsx			 = DOC_DEFINITIONS.javascript;
+        DOC_DEFINITIONS.jsx          = DOC_DEFINITIONS.javascript;
         DOC_DEFINITIONS.coffeescript = DOC_DEFINITIONS.javascript;
-        DOC_DEFINITIONS.livescript 	 = DOC_DEFINITIONS.javascript;
-    
+        DOC_DEFINITIONS.livescript   = DOC_DEFINITIONS.javascript;
+
         var DOCBLOCK_STATIC_HINTS = /(\[\[[^\]]+\<[^\]]+\>\]\])/;
         var DOCBLOCK_FIELD = /(\[\[[^\]]+\]\])/;
         var CALLBACK = /\/\*\*[\s\S]*?@callback\s(\S*?)\s[\s\S]*?\*\//g;
         var FUNC_DEFINITION_ROW = /^[\S\s]*?\*\/([\S\s]*?{)/g;
-        var FUNC_DEFINITION	    = /^(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?)|([A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{)/;
-        var REGEX_END			= /(\n|\r|$)/;
+        var FUNC_DEFINITION     = /^(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?)|([A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{)/;
+        var REGEX_END           = /(\n|\r|$)/;
         var DOCBLOCK_EMPTY_BEFORE = /^\s*\*(\s*)$/;
 
 
@@ -78,7 +78,7 @@ define(['text!definitions/default.json',
         /**
          * @cal
          * Get the hints for a selection
-         * uses {@link removeWrongHints	removeWrongHints}
+         * uses {@link removeWrongHints removeWrongHints}
          * @param   {String} implicitChar implicit character
          * @returns {Object} hintManager object
          */
@@ -91,7 +91,7 @@ define(['text!definitions/default.json',
             this.boolSetSelection = false;
             this.deleteFirstNChars = 0;
 
-            var language 	= this.editor.getLanguageForSelection().getId();
+            var language    = this.editor.getLanguageForSelection().getId();
             var definitions = this.docDefinitions;
 
             if (definitions[language] === undefined) {
@@ -116,8 +116,8 @@ define(['text!definitions/default.json',
                 }
                 break;
             case "[[callLink]]":
-                var editor 	 	= EditorManager.getCurrentFullEditor();
-                var code 	 	= editor.document.getRange(this.pos,{ch:0,line:editor.lineCount()});
+                var editor      = EditorManager.getCurrentFullEditor();
+                var code        = editor.document.getRange(this.pos,{ch:0,line:editor.lineCount()});
                 var funcNameRow = FUNC_DEFINITION_ROW.exec(code);
                 if (funcNameRow) {
                     var funcName = getFuncName(funcNameRow[1]);
@@ -191,7 +191,7 @@ define(['text!definitions/default.json',
                     this.deleteFirstNChars = 1;
                 }
 
-              
+
 
                 for (var tag in definitions.tags) {
                     hints.push(definitions.tags[tag]);
@@ -203,7 +203,7 @@ define(['text!definitions/default.json',
                 // Here we have static suggestions included in the tag (i.e. [[Access<protected|public|private>]])
                 var hintsStartIndex = this.implicitChar.indexOf('<');
                 var hintsStopIndex = this.implicitChar.indexOf('>');
-                    
+
                 if (hintsStartIndex !== -1 && hintsStopIndex !== -1 && hintsStopIndex > hintsStartIndex) {
                     var hintsRaw = this.implicitChar.substring(hintsStartIndex+1, hintsStopIndex);
                     hints = hintsRaw.split('|');
@@ -215,11 +215,11 @@ define(['text!definitions/default.json',
             this.removeSelection = (this.removeSelection && this.match !== '') ? false : this.removeSelection;
 
             hints = this.removeWrongHints(hints);
-            
+
             if (this.implicitChar == '@') {
-                hints.sort(sortTags(this.match));   
+                hints.sort(sortTags(this.match));
             }
-            
+
             return {
                 hints: hints,
                 match: this.match,
@@ -228,17 +228,17 @@ define(['text!definitions/default.json',
             };
         };
 
-    
+
         function sortTags(match) {
             return function(a,b) {
-                var matchA = a.indexOf(match);   
-                var matchB = b.indexOf(match);   
-                if (matchA == matchB) return 0;   
-                return (matchA > matchB) ? 1 : -1;   
+                var matchA = a.indexOf(match);
+                var matchB = b.indexOf(match);
+                if (matchA == matchB) return 0;
+                return (matchA > matchB) ? 1 : -1;
             }
         }
-    
-    
+
+
         /**
          * Return the function name for a special row
          * Array.prototype.abc = function() { => abc
@@ -251,9 +251,9 @@ define(['text!definitions/default.json',
             // multiline,caseinsensitive
             var regex = new RegExp(FUNC_DEFINITION.source, 'mi');
 
-            var matches 		= null;
-            var multicomment 	= null;
-            var match_func 		= false;
+            var matches      = null;
+            var multicomment = null;
+            var match_func   = false;
             matches = regex.exec(row);
 
             if (matches) {
@@ -316,13 +316,13 @@ define(['text!definitions/default.json',
             var currentDoc = this.editor.document;
 
             var oldPosCh = this.pos.ch;
-            
+
             // Where the range end that should be replaced
             var start = {
                 line: this.pos.line,
                 ch: this.pos.ch - this.deleteFirstNChars
             };
-            
+
             // if the hint is a '@' tag and the line before is empty => left align the tag
             if (this.implicitChar == '@') {
                 var lineBefStr = currentDoc.getLine(this.pos.line).substr(0,start.ch);
@@ -332,8 +332,8 @@ define(['text!definitions/default.json',
                     this.pos.ch -= match[1].length-1;
                 }
             }
-            
-            
+
+
             var end = {
                 line: this.pos.line,
                 ch: oldPosCh + ((this.removeSelection) ? this.selection.length : this.match.length)
