@@ -6,10 +6,10 @@ define(['text!definitions/default.json',
         'text!definitions/php.json'],
     function (defaultDef, javascriptDef, phpDef) {
         var DocumentManager     = brackets.getModule('document/DocumentManager');
-		var EditorManager       = brackets.getModule('editor/EditorManager');
-		var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
+        var EditorManager       = brackets.getModule('editor/EditorManager');
+        var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
 
-		/**
+        /**
          * Parse Documentation Definitions, used to populate tag suggestions
          */
         var DOC_DEFINITIONS = {
@@ -25,8 +25,8 @@ define(['text!definitions/default.json',
         var DOCBLOCK_FIELD = /(\[\[[^\]]+\]\])/;
         var CALLBACK = /\/\*\*[\s\S]*?@callback\s(\S*?)\s[\s\S]*?\*\//g;
         var FUNC_DEFINITION_ROW = /^[\S\s]*?\*\/([\S\s]*?{)/g;
-		var FUNC_DEFINITION	    = /^(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?)|([A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*{)/;
-		var REGEX_END			= /(\n|\r|$)/;
+        var FUNC_DEFINITION	    = /^(var (.*)=\s*(?:function(.*)|React.createClass\s*\((?:.*))|function (.*?)|(.*?):\s*?function(.*?)|([^.]*?)\.(prototype\.)?([^.]*?)\s*?=\s*?function(.*?)|([A-Za-z\$\_][A-Za-z\$\_0-9]*)?\s*\(([^\)]*)\)\s*\{)/;
+        var REGEX_END			= /(\n|\r|$)/;
         var DOCBLOCK_EMPTY_BEFORE = /^\s*\*(\s*)$/;
 
 
@@ -57,10 +57,10 @@ define(['text!definitions/default.json',
             this.insideDocPos = this.insideDocBlock(this.pos);
             if (this.insideDocPos) {
                 this.pos = editor.getCursorPos();
-				if (this.selection.substr(0,2) == '[[' && this.selection.substr(-2,2) == ']]') {
-					this.implicitChar = this.selection;
-					return true;
-				} else {
+                if (this.selection.substr(0,2) == '[[' && this.selection.substr(-2,2) == ']]') {
+                    this.implicitChar = this.selection;
+                    return true;
+                } else {
                     if (implicitChar == '@') {
                         this.removeSelection = true;
                         this.implicitChar = "@";
@@ -91,41 +91,41 @@ define(['text!definitions/default.json',
             this.boolSetSelection = false;
             this.deleteFirstNChars = 0;
 
-			var language 	= this.editor.getLanguageForSelection().getId();
+            var language 	= this.editor.getLanguageForSelection().getId();
             var definitions = this.docDefinitions;
-			
-			if (definitions[language] === undefined) {
-				definitions = definitions.default;
-			} else {
-				definitions = definitions[language];
-			}
-			
+
+            if (definitions[language] === undefined) {
+                definitions = definitions.default;
+            } else {
+                definitions = definitions[language];
+            }
+
             switch (this.implicitChar) {
             case "[[Type]]":
-				var defKeys = Object.keys(definitions.types);
-				for (var i = 0; i < defKeys.length; i++) {
-					hints.push(definitions.types[defKeys[i]]);
-				}
-				// Check for callbacks in the current file
-				var currentDoc = DocumentManager.getCurrentDocument().getText();
-				var callback = null;
-				while((callback = CALLBACK.exec(currentDoc)) != null) {
-					if (callback[1] != "[[callLink]]") {
-						hints.push(callback[1]);
-					}
-				}
+                var defKeys = Object.keys(definitions.types);
+                for (var i = 0; i < defKeys.length; i++) {
+                    hints.push(definitions.types[defKeys[i]]);
+                }
+                // Check for callbacks in the current file
+                var currentDoc = DocumentManager.getCurrentDocument().getText();
+                var callback = null;
+                while((callback = CALLBACK.exec(currentDoc)) != null) {
+                    if (callback[1] != "[[callLink]]") {
+                        hints.push(callback[1]);
+                    }
+                }
                 break;
-			case "[[callLink]]":
-				var editor 	 	= EditorManager.getCurrentFullEditor();
-				var code 	 	= editor.document.getRange(this.pos,{ch:0,line:editor.lineCount()});
-				var funcNameRow = FUNC_DEFINITION_ROW.exec(code);
-				if (funcNameRow) {
-					var funcName = getFuncName(funcNameRow[1]);
-					if (funcName) {
-						hints.push(funcName);
-					}
-				}
-				// no break get all link possibilities as well!
+            case "[[callLink]]":
+                var editor 	 	= EditorManager.getCurrentFullEditor();
+                var code 	 	= editor.document.getRange(this.pos,{ch:0,line:editor.lineCount()});
+                var funcNameRow = FUNC_DEFINITION_ROW.exec(code);
+                if (funcNameRow) {
+                    var funcName = getFuncName(funcNameRow[1]);
+                    if (funcName) {
+                        hints.push(funcName);
+                    }
+                }
+                // no break get all link possibilities as well!
             case "[[Link]]":
                 var functionList = this.createFunctionList();
                 var functionSignature = this.getFunctionCodeTypes(this.editor, {
@@ -146,37 +146,37 @@ define(['text!definitions/default.json',
                 }
                 hints.push.apply(hints, bestFuncs.concat(otherFuncs));
                 break;
-			case "[[Name]]":
-			case "[[Author]]":
-				var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
-				var prefsAtName = _prefs.get('atName');
-				if (prefsAtName != '') {
-					hints.push(prefsAtName);
-				}
-				break;
-			case "[[Date]]":
-				var today = new Date();
-				var dd = today.getDate();
-					dd = dd < 10 ? '0'+dd : dd;
-				var mm = today.getMonth()+1; //January is 0!
-					mm = mm < 10 ? '0'+mm : mm;
-				var yyyy = today.getFullYear();
-				var hh = today.getHours();	
-				var mi = today.getMinutes();	
-					
-				hints.push(mm+'/'+dd+'/'+yyyy);	
-				hints.push(dd+'.'+mm+'.'+yyyy);	
-				hints.push(yyyy+'-'+mm+'-'+dd);	
-					
-				hints.push(mm+'/'+dd+'/'+yyyy+' '+hh+':'+mi);	
-				hints.push(dd+'.'+mm+'.'+yyyy+' '+hh+':'+mi);	
-				hints.push(yyyy+'-'+mm+'-'+dd+' '+hh+':'+mi);
-				break;
-			case "[[License]]":
-				hints.push('Creative Commons v3.0');	
-				hints.push('MIT license (MIT)');	
-				hints.push('W3C License (W3C)');	
-				break;
+            case "[[Name]]":
+            case "[[Author]]":
+                var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
+                var prefsAtName = _prefs.get('atName');
+                if (prefsAtName != '') {
+                    hints.push(prefsAtName);
+                }
+                break;
+            case "[[Date]]":
+                var today = new Date();
+                var dd = today.getDate();
+                    dd = dd < 10 ? '0'+dd : dd;
+                var mm = today.getMonth()+1; //January is 0!
+                    mm = mm < 10 ? '0'+mm : mm;
+                var yyyy = today.getFullYear();
+                var hh = today.getHours();
+                var mi = today.getMinutes();
+
+                hints.push(mm+'/'+dd+'/'+yyyy);
+                hints.push(dd+'.'+mm+'.'+yyyy);
+                hints.push(yyyy+'-'+mm+'-'+dd);
+
+                hints.push(mm+'/'+dd+'/'+yyyy+' '+hh+':'+mi);
+                hints.push(dd+'.'+mm+'.'+yyyy+' '+hh+':'+mi);
+                hints.push(yyyy+'-'+mm+'-'+dd+' '+hh+':'+mi);
+                break;
+            case "[[License]]":
+                hints.push('Creative Commons v3.0');
+                hints.push('MIT license (MIT)');
+                hints.push('W3C License (W3C)');
+                break;
             case "@":
                 var line = this.editor.document.getRange({
                     line: this.pos.line,
@@ -239,59 +239,59 @@ define(['text!definitions/default.json',
         }
     
     
-		/**
-		 * Return the function name for a special row
-		 * Array.prototype.abc = function() { => abc
-		 * function cool() { => cool
-		 * @param   {String} row row where the function is declared
-		 * @returns {String} the function name
-		 */
-		function getFuncName(row) {
-			row = row.trim();
-			// multiline,caseinsensitive
-			var regex = new RegExp(FUNC_DEFINITION.source, 'mi');
+        /**
+         * Return the function name for a special row
+         * Array.prototype.abc = function() { => abc
+         * function cool() { => cool
+         * @param   {String} row row where the function is declared
+         * @returns {String} the function name
+         */
+        function getFuncName(row) {
+            row = row.trim();
+            // multiline,caseinsensitive
+            var regex = new RegExp(FUNC_DEFINITION.source, 'mi');
 
-			var matches 		= null;
-			var multicomment 	= null;
-			var match_func 		= false;
-			matches = regex.exec(row);
-			
-			if (matches) {
-				// matches[0] = all
-				// matches[2] = '''function_name''' or matches[4] if matches[2] undefined or matches[5] if both undefined
-				// get the function name
-				// start_pos
-				for (var i = 0; i < matches.length; i++) {
-					if (matches[i]) {
-						matches[i] = matches[i].trim();
-					}
-				}
-				if (matches[2]) {
-					match_func = matches[2];
-				} else if (matches[4]) {
-					match_func = matches[4];
-				} else if (matches[5]) {
-					match_func = matches[5];
-				}  else if (matches[7]) {
-					// prototype or static
-					if (matches[8] == "prototype.") {
-						match_func = matches[9];
-					} else if (!matches[8]) {
-						match_func = matches[9];
-					}
-				} else if(matches[11]) { // ECMAscript 6 function
-					match_func = matches[11];					
-				}
-				if (match_func) {
-					var end_func_name = match_func.search(/( |\(|$)/);
-					if (end_func_name >= 0) {
-						match_func = match_func.substring(0,end_func_name).trim();
-					}
-				}
-			}
-			
-			return match_func;
-		}
+            var matches 		= null;
+            var multicomment 	= null;
+            var match_func 		= false;
+            matches = regex.exec(row);
+
+            if (matches) {
+                // matches[0] = all
+                // matches[2] = '''function_name''' or matches[4] if matches[2] undefined or matches[5] if both undefined
+                // get the function name
+                // start_pos
+                for (var i = 0; i < matches.length; i++) {
+                    if (matches[i]) {
+                        matches[i] = matches[i].trim();
+                    }
+                }
+                if (matches[2]) {
+                    match_func = matches[2];
+                } else if (matches[4]) {
+                    match_func = matches[4];
+                } else if (matches[5]) {
+                    match_func = matches[5];
+                }  else if (matches[7]) {
+                    // prototype or static
+                    if (matches[8] == "prototype.") {
+                        match_func = matches[9];
+                    } else if (!matches[8]) {
+                        match_func = matches[9];
+                    }
+                } else if(matches[11]) { // ECMAscript 6 function
+                    match_func = matches[11];
+                }
+                if (match_func) {
+                    var end_func_name = match_func.search(/( |\(|$)/);
+                    if (end_func_name >= 0) {
+                        match_func = match_func.substring(0,end_func_name).trim();
+                    }
+                }
+            }
+
+            return match_func;
+        }
 
         /**
          * Remove hints that doesn't match the current this.match
