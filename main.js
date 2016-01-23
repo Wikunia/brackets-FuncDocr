@@ -114,7 +114,7 @@ define(function (require, exports, module) {
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
-    var DOCBLOCK_START      = /^\s*\/\*\*?/;
+    var DOCBLOCK_START      = /^\s*\/\*\*/;
     var DOCBLOCK_MIDDLE     = /^\s*\*/;
     var DOCBLOCK_MIDDLE_EMPTY = /^\s*\*$/;
     var DOCBLOCK_END        = /^\s*\*\//;
