@@ -125,7 +125,7 @@ define(function (require, exports, module) {
     var DOCBLOCK_AT_LINE 	= /(\s+\*\s+@([a-zA-Z]*)\s+)([^ ]+\s*)/;
     var DOCBLOCK_MULTI_LINE = /^(\s*)(\*)(\s+)/;
 
-    var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)?\s*(.*?)=(.*)/;
+    var TYPEOF_LONG 		= /^if\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)\s*\{?\s*(.*?)=(.*)/;
     var TYPEOF_SHORT		= /^(.*?)\s*=\s*\(\s*typeof\s*(.*?)([!=])==?\s+["']undefined["']\s*\)?\s*\?(.*?):(.*)/;
     var TYPEOF_TRUE_SHORT	= /(\S+)\s*=\s*\(\s*typeof\s*(.*?)===?\s+["']undefined["']\s*\)\s*\|\|\s*(\S+)/;
     var OR_DEFAULT			= /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/;
@@ -1619,70 +1619,77 @@ define(function (require, exports, module) {
         var expressions = code.split(';');
         var i = 0;
         // first expression needs to include 'typeof'
-        while (/[^0-9a-z_]typeof[^0-9a-z_]/i.test(expressions[i]) || /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/i.test(expressions[i])) {
-            expressions[i] = expressions[i].trim();
-            // TYPEOF_SHORT_TRUE =>
-            // variable = typeof variable === "undefined" || variable
-            var matchTrueShort 	= TYPEOF_TRUE_SHORT.exec(expressions[i]);
+        while (i < expressions.length) {
+            if (/[^0-9a-z_]typeof[^0-9a-z_]/i.test(expressions[i]) || /(\S+)\s*=\s*(\S+)\s*\|\|\s*(\S+)/i.test(expressions[i])) {
+                expressions[i] = expressions[i].trim();
+                // TYPEOF_SHORT_TRUE =>
+                // variable = typeof variable === "undefined" || variable
+                var matchTrueShort 	= TYPEOF_TRUE_SHORT.exec(expressions[i]);
 
-            // TYPEOF_LONG =>
-            // if typeof variable ===? undefined variable = default
-            var matchLong 	= TYPEOF_LONG.exec(expressions[i]);
-            // TYPEOF_SHORT =>
-            // variable = typeof variable === "undefined" ? variable : default
-            // or variable = typeof variable !== "undefined" ? default : variable
-            var matchShort 	= TYPEOF_SHORT.exec(expressions[i]);
-            // or variable = variable || default
-            var matchOr		= OR_DEFAULT.exec(expressions[i]);
-            var match;
-            if (matchTrueShort) {
-                match = matchTrueShort;
-                for (var j = 1; j < match.length; j++) {
-                    match[j] = match[j].trim();
-                }
-                if ((match[1] == match[2]) && (match[1]  == match[3])) {
-                    var variable = match[1];
-                    var paramIndex = keyIndexOf(params,'name',variable);
-                    if (paramIndex >= 0) {
-                        params[paramIndex].optional = true;
-                        params[paramIndex].default = true;
-                        params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
+                // TYPEOF_LONG =>
+                // if typeof variable ===? undefined variable = default
+                var matchLong 	= TYPEOF_LONG.exec(expressions[i]);
+                             
+                
+                // TYPEOF_SHORT =>
+                // variable = typeof variable === "undefined" ? variable : default
+                // or variable = typeof variable !== "undefined" ? default : variable
+                var matchShort 	= TYPEOF_SHORT.exec(expressions[i]);
+                // or variable = variable || default
+                var matchOr		= OR_DEFAULT.exec(expressions[i]);
+                var match;
+                if (matchTrueShort) {
+                    match = matchTrueShort;
+                    for (var j = 1; j < match.length; j++) {
+                        match[j] = match[j].trim();
                     }
-                }
-            } else if (matchLong || matchOr) {
-                match = matchLong ? matchLong : matchOr;
-                for (var j = 1; j < match.length; j++) {
-                    match[j] = match[j].trim();
-                }
-                // variable == variable
-                if (match[1] == match[2]) {
-                    var variable = match[1];
-                    var paramIndex = keyIndexOf(params,'name',variable);
-                    if (paramIndex >= 0) {
-                        params[paramIndex].optional = true;
-                        params[paramIndex].default = match[3];
-                        params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
-                    }
-                }
-            } else if (matchShort) {
-                // variable = typeof variable === "undefined" ? default : variable
-                // or variable = typeof variable !== "undefined" ? variable : default
-                match = matchShort;
-                for (var j = 1; j < match.length; j++) {
-                    match[j] = match[j].trim();
-                }
-                // variable == variable
-                if (match[1] == match[2] && (match[1] == match[4] || match[1] == match[5])) {
-                    var variable = match[1];
-                    var paramIndex = keyIndexOf(params,'name',variable);
-                    if (paramIndex >= 0) {
-                        params[paramIndex].optional = true;
-                        if (match[3] == '!') {
-                            params[paramIndex].default = match[5];
-                        } else {
-                            params[paramIndex].default = match[4];
+                    if ((match[1] == match[2]) && (match[1]  == match[3])) {
+                        var variable = match[1];
+                        var paramIndex = keyIndexOf(params,'name',variable);
+                        if (paramIndex >= 0) {
+                            params[paramIndex].optional = true;
+                            params[paramIndex].default = true;
+                            params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
                         }
-                        params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
+                    }
+                } else if (matchLong || matchOr || matchLongMulti) {
+                    match = matchLong ? matchLong : matchOr;
+                    match = match ? match : matchLongMulti;
+                    for (var j = 1; j < match.length; j++) {
+                        match[j] = match[j].trim();
+                    }
+                    var firstVariable = match[1];
+                    var secondVariable = match[2];
+                    var defaultVal = match[3];
+                    // variable == variable
+                    if (firstVariable == secondVariable) {
+                        var paramIndex = keyIndexOf(params,'name',firstVariable);
+                        if (paramIndex >= 0) {
+                            params[paramIndex].optional = true;
+                            params[paramIndex].default = defaultVal;
+                            params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
+                        }
+                    }
+                } else if (matchShort) {
+                    // variable = typeof variable === "undefined" ? default : variable
+                    // or variable = typeof variable !== "undefined" ? variable : default
+                    match = matchShort;
+                    for (var j = 1; j < match.length; j++) {
+                        match[j] = match[j].trim();
+                    }
+                    // variable == variable
+                    if (match[1] == match[2] && (match[1] == match[4] || match[1] == match[5])) {
+                        var variable = match[1];
+                        var paramIndex = keyIndexOf(params,'name',variable);
+                        if (paramIndex >= 0) {
+                            params[paramIndex].optional = true;
+                            if (match[3] == '!') {
+                                params[paramIndex].default = match[5];
+                            } else {
+                                params[paramIndex].default = match[4];
+                            }
+                            params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
+                        }
                     }
                 }
             }
