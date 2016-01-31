@@ -1616,7 +1616,7 @@ define(function (require, exports, module) {
         code = code.substr(code.indexOf('{')+1);
         code = code.substring(0,code.lastIndexOf('}'));
         // split the code into expressions (';')
-        var expressions = code.split(';');
+        var expressions = code.split(/[;}]/);
         var i = 0;
         // first expression needs to include 'typeof'
         while (i < expressions.length) {
@@ -1652,9 +1652,8 @@ define(function (require, exports, module) {
                             params[paramIndex].title = '['+params[paramIndex].name+'='+params[paramIndex].default+']';
                         }
                     }
-                } else if (matchLong || matchOr || matchLongMulti) {
+                } else if (matchLong || matchOr) {
                     match = matchLong ? matchLong : matchOr;
-                    match = match ? match : matchLongMulti;
                     for (var j = 1; j < match.length; j++) {
                         match[j] = match[j].trim();
                     }
