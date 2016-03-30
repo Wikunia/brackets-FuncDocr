@@ -74,6 +74,12 @@ define(function (require, exports, module) {
     
     var FUNCTION_ES6_66 = /^\s*[(]?(\s*|(?:\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*,?)+)[)]?\s*?=>\s*\{/;
     
+    var FUNCTION_FORM_VAR_PLUS_NAME 	= /(?:var)?\s*([A-Za-z\$\_][A-Za-z\$\_\.0-9]*)\s*=/; // var stuff =
+    var FUNCTION_FORM_OBJ_PLUS_NAME 	= /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?([A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=/; // abc.stuff =
+    var FUNCTION_FORM_CLASS_PLUS_NAME	= /([A-Za-z\$\_][A-Za-z\$\_0-9]*):/; // sayName:
+    
+    var FUNCTION_ES6_66_PLUS_NAME = /^\s*[(]?(\s*|(?:\s*([A-Za-z\$\_][A-Za-z\$\_\.0-9]*),?)+)[)]?\s*?=>\s*\{/;
+    
     var FUNCTION_FORM_ES6 = new RegExp(
         FUNCTION_FORM_VAR.source+FUNCTION_ES6_66.source+ONLY_ONE_LINEBREAK.source
     );
@@ -90,6 +96,22 @@ define(function (require, exports, module) {
         FUNCTION_FORM_CLASS.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
     
+    var FUNCTION_FORM_ES6_PLUS_NAME = new RegExp(
+        FUNCTION_FORM_VAR.source+FUNCTION_ES6_66.source+ONLY_ONE_LINEBREAK.source
+    );
+    
+    var FUNCTION_FORM_VAR_COMPLETE_PLUS_NAME = new RegExp(
+        FUNCTION_FORM_VAR.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+    );
+    
+    var FUNCTION_FORM_OBJ_COMPLETE_PLUS_NAME = new RegExp(
+        FUNCTION_FORM_OBJ.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+    );
+    
+    var FUNCTION_FORM_CLASS_COMPLETE_PLUS_NAME = new RegExp(
+        FUNCTION_FORM_CLASS.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+    );
+    
     var FUNCTION_FORM_NORMAL = new RegExp(
         FUNCTION_PS.source+'?(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
@@ -98,18 +120,29 @@ define(function (require, exports, module) {
         FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
     
+    var FUNCTION_FORM_NORMAL_PLUS_NAME = new RegExp(
+        FUNCTION_PS.source+'?(?:function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+    );
+        
+    var FUNCTION_FORM_NORMAL_PLUS_PLUS_NAME = new RegExp(
+        FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+    );
+    
     
     var FUNCTION_NAME = /\s+(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*)/;
     
         
     var FUNCTION_WO_PARAM   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_NORMAL_PLUS.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
 
+    var FUNCTION_WO_PARAM_PLUS_NAME   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL_PLUS_NAME.source+'|'+FUNCTION_FORM_NORMAL_PLUS_PLUS_NAME.source+'|'+FUNCTION_FORM_VAR_COMPLETE_PLUS_NAME.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE_PLUS_NAME.source+'function'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE_PLUS_NAME.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
     
     var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
 
     var FUNCTION_PARAM         = /\s*\(([^{};]*)\)\s*\{/; // will be validated in checkIfFunction
     var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6.source);
+    var FUNCTION_REGEXP_PLUS_NAME	= new RegExp(FUNCTION_WO_PARAM_PLUS_NAME.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6_PLUS_NAME.source);
     var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')');
+    var FUNCTION_REGEXP_EXTRA_MATCHES_PLUS_NAME = new RegExp(FUNCTION_WO_PARAM_PLUS_NAME.source+'('+FUNCTION_PARAM.source+')');
 
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -207,6 +240,7 @@ define(function (require, exports, module) {
         var docExists   = DOCBLOCK_END.test(lineBefore) ? true : false;
         
         var matches     = FUNCTION_REGEXP.exec(code);
+        
         if (!matches) {
             return null;   
         }
@@ -215,6 +249,18 @@ define(function (require, exports, module) {
             matches.splice(1,1); 
         }
 
+        var name_matches     = FUNCTION_REGEXP_PLUS_NAME.exec(code);
+        if (!name_matches) {
+            return null;   
+        }
+        var funcName;
+        if (name_matches[1]) {
+            funcName = name_matches[1];
+        } else {
+            funcName = name_matches[2];
+        }
+        
+        
         var signature   = {};
         // defaults
         signature.indentation = INDENTATION_REGEXP.exec(code)[0];
@@ -273,7 +319,7 @@ define(function (require, exports, module) {
                 signature.returns.bool = true;
             }
         }
-        return {signature: signature, docExists: docExists ? {start: docStartLine, end: position.line} : false };
+        return {signature: signature, funcName: funcName, docExists: docExists ? {start: docStartLine, end: position.line} : false };
     }
 
     function getNormalSignature(signature,editor,position,matches) {
@@ -469,7 +515,12 @@ define(function (require, exports, module) {
             }
             // get all other specified tags (not param/return) 
             if (commentTags[i].substr(0,6) !== 'return' && commentTags[i].substr(0,5) !== 'param') {
-                var currentTag = commentTags[i].substr(0,commentTags[i].indexOf(' '));
+                var currentTag;
+                if (commentTags[i].indexOf(' ') < 0) {
+                    currentTag = commentTags[i];
+                } else {
+                    currentTag = commentTags[i].substr(0,commentTags[i].indexOf(' '));
+                }
                 var tabs = getTabsForATag(currentTag);
                 var tagRegex = getRegexForATag(currentTag);
                 var tagTabsMatches = tagRegex.exec('@'+commentTags[i]);
@@ -546,6 +597,9 @@ define(function (require, exports, module) {
             for (var i = 0; i < signature.author.length; i++) {
                 authors.push(signature.author[i].author);   
             }
+        }
+        if (!("private" in signature) && signatureObj.funcName.charAt(0) == "_") {
+            output.push(' * @private');    
         }
         if (_prefs.get('author_auto') && author != '' && 
             (authors.length == 0 || authors.indexOf(author) < 0)) {
