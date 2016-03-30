@@ -97,19 +97,19 @@ define(function (require, exports, module) {
     );
     
     var FUNCTION_FORM_ES6_PLUS_NAME = new RegExp(
-        FUNCTION_FORM_VAR.source+FUNCTION_ES6_66.source+ONLY_ONE_LINEBREAK.source
+        FUNCTION_FORM_VAR_PLUS_NAME.source+FUNCTION_ES6_66_PLUS_NAME.source+ONLY_ONE_LINEBREAK.source
     );
     
     var FUNCTION_FORM_VAR_COMPLETE_PLUS_NAME = new RegExp(
-        FUNCTION_FORM_VAR.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+        FUNCTION_FORM_VAR_PLUS_NAME.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
     
     var FUNCTION_FORM_OBJ_COMPLETE_PLUS_NAME = new RegExp(
-        FUNCTION_FORM_OBJ.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+        FUNCTION_FORM_OBJ_PLUS_NAME.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
     
     var FUNCTION_FORM_CLASS_COMPLETE_PLUS_NAME = new RegExp(
-        FUNCTION_FORM_CLASS.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
+        FUNCTION_FORM_CLASS_PLUS_NAME.source+FUNCTION_PS.source+'?'+ONLY_ONE_LINEBREAK.source
     );
     
     var FUNCTION_FORM_NORMAL = new RegExp(
@@ -256,8 +256,14 @@ define(function (require, exports, module) {
         var funcName;
         if (name_matches[1]) {
             funcName = name_matches[1];
-        } else {
+        } else if (name_matches[2]) {
             funcName = name_matches[2];
+        } else if (name_matches[3]) {
+            funcName = name_matches[3];
+        } else if (name_matches[4]) {
+            funcName = name_matches[4];
+        } else if (name_matches[5]) {
+            funcName = name_matches[5];
         }
         
         
