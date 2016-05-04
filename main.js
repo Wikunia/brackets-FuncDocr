@@ -113,28 +113,28 @@ define(function (require, exports, module) {
     );
     
     var FUNCTION_FORM_NORMAL = new RegExp(
-        FUNCTION_PS.source+'?(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:function\\*?\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
         
     var FUNCTION_FORM_NORMAL_PLUS = new RegExp(
-        FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\*?\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
     
     var FUNCTION_FORM_NORMAL_PLUS_NAME = new RegExp(
-        FUNCTION_PS.source+'?(?:function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:function\\*?\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
         
     var FUNCTION_FORM_NORMAL_PLUS_PLUS_NAME = new RegExp(
-        FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\*?\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
     
     
     var FUNCTION_NAME = /(?:\s+(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*))/;
     
         
-    var FUNCTION_WO_PARAM   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_NORMAL_PLUS.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
+    var FUNCTION_WO_PARAM   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_NORMAL_PLUS.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function\\*?|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function\\*?'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function\\*?)'+ONLY_ONE_LINEBREAK.source+')');
 
-    var FUNCTION_WO_PARAM_PLUS_NAME   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL_PLUS_NAME.source+'|'+FUNCTION_FORM_NORMAL_PLUS_PLUS_NAME.source+'|'+FUNCTION_FORM_VAR_COMPLETE_PLUS_NAME.source+'function|'+FUNCTION_FORM_OBJ_COMPLETE_PLUS_NAME.source+'function'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE_PLUS_NAME.source+'function)'+ONLY_ONE_LINEBREAK.source+')');
+    var FUNCTION_WO_PARAM_PLUS_NAME   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL_PLUS_NAME.source+'|'+FUNCTION_FORM_NORMAL_PLUS_PLUS_NAME.source+'|'+FUNCTION_FORM_VAR_COMPLETE_PLUS_NAME.source+'function\\*?|'+FUNCTION_FORM_OBJ_COMPLETE_PLUS_NAME.source+'function\\*?'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE_PLUS_NAME.source+'function\\*?)'+ONLY_ONE_LINEBREAK.source+')');
         
     var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
 
@@ -144,6 +144,8 @@ define(function (require, exports, module) {
     var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')');
     var FUNCTION_REGEXP_EXTRA_MATCHES_PLUS_NAME = new RegExp(FUNCTION_WO_PARAM_PLUS_NAME.source+'('+FUNCTION_PARAM.source+')');
 
+    console.log(FUNCTION_REGEXP);
+    
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
     var DOCBLOCK_BOUNDARY   = /[A-Za-z\[\]]/;
