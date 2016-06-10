@@ -67,18 +67,18 @@ define(function (require, exports, module) {
     var BEFORE_FUNCTION_STARTS =  /[\t ]*/;
     var ONLY_ONE_LINEBREAK = /[\t ]*\s??[\t ]*/;
 
-    var FUNCTION_FORM_VAR 	= /(?:var)?\s*[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // var stuff =
-    var FUNCTION_FORM_OBJ 	= /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?[A-Za-z\$\_][A-Za-z\$\_0-9]*\s*=/; // abc.stuff =
-    var FUNCTION_FORM_CLASS	= /[A-Za-z\$\_][A-Za-z\$\_0-9]*:/; // sayName:
+    var FUNCTION_FORM_VAR 	= /(?:var)?\s*\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?\s*=/; // var stuff =
+    var FUNCTION_FORM_OBJ 	= /(?:\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?\.)+(?:prototype\.)?\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?\s*=/; // abc.stuff =
+    var FUNCTION_FORM_CLASS	= /\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?:/; // sayName:
     var FUNCTION_PS			= /(?:export\s+(?:default|const)?)?(?:(?:(?:(?:public )?(?:static )?|private (?:static )?|protected (?:static ))|(?:(?:static )?public |(?:static )?private |(?:static )?protected))[\t ]*\s??[\t ]*)/;
     
-    var FUNCTION_ES6_66 = /^\s*[(]?(\s*|(?:\s*[A-Za-z\$\_][A-Za-z\$\_\.0-9]*,?)+)[)]?\s*?=>\s*\{/;
+    var FUNCTION_ES6_66 = /^\s*[(]?(\s*|(?:\s*'?[A-Za-z\$\_][A-Za-z\$\_\.0-9]*'?,?)+)[)]?\s*?=>\s*\{/;
     
-    var FUNCTION_FORM_VAR_PLUS_NAME 	= /(?:var)?\s*([A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=/; // var stuff =
-    var FUNCTION_FORM_OBJ_PLUS_NAME 	= /(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*\.)+(?:prototype\.)?([A-Za-z\$\_][A-Za-z\$\_0-9]*)\s*=/; // abc.stuff =
-    var FUNCTION_FORM_CLASS_PLUS_NAME	= /([A-Za-z\$\_][A-Za-z\$\_0-9]*):/; // sayName:
+    var FUNCTION_FORM_VAR_PLUS_NAME 	= /(?:var)?\s*(\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?)\s*=/; // var stuff =
+    var FUNCTION_FORM_OBJ_PLUS_NAME 	= /(?:\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?\.)+(?:prototype\.)?(\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?)\s*=/; // abc.stuff =
+    var FUNCTION_FORM_CLASS_PLUS_NAME	= /(\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?):/; // sayName:
     
-    var FUNCTION_ES6_66_PLUS_NAME = /^\s*[(]?(\s*|(?:\s*([A-Za-z\$\_][A-Za-z\$\_\.0-9]*),?)+)[)]?\s*?=>\s*\{/;
+    var FUNCTION_ES6_66_PLUS_NAME = /^\s*[(]?(\s*|(?:\s*('?[A-Za-z\$\_][A-Za-z\$\_\.0-9]*'?),?)+)[)]?\s*?=>\s*\{/;
     
     var FUNCTION_FORM_ES6 = new RegExp(
         FUNCTION_FORM_VAR.source+FUNCTION_ES6_66.source+ONLY_ONE_LINEBREAK.source
@@ -113,30 +113,30 @@ define(function (require, exports, module) {
     );
     
     var FUNCTION_FORM_NORMAL = new RegExp(
-        FUNCTION_PS.source+'?(?:function\\*?\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:function\\*?\\s+)?(?:\'?[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*\'?)'
     );
         
     var FUNCTION_FORM_NORMAL_PLUS = new RegExp(
-        FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\*?\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:\'[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*\'?):\\s+(?:function\\*?\\s+)?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
     
     var FUNCTION_FORM_NORMAL_PLUS_NAME = new RegExp(
-        FUNCTION_PS.source+'?(?:function\\*?\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:function\\*?\\s+)?(\'?[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*\'?)'
     );
         
     var FUNCTION_FORM_NORMAL_PLUS_PLUS_NAME = new RegExp(
-        FUNCTION_PS.source+'?(?:[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*):\\s+(?:function\\*?\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
+        FUNCTION_PS.source+'?(?:\'?[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*\'?):\\s+(?:function\\*?\\s+)?([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)'
     );
     
     
-    var FUNCTION_NAME = /(?:\s+(?:[A-Za-z\$\_][A-Za-z\$\_0-9]*))/;
+    var FUNCTION_NAME = /(?:\s+(?:\'?[A-Za-z\$\_][A-Za-z\$\_0-9]*\'?))/;
     
         
     var FUNCTION_WO_PARAM   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL.source+'|'+FUNCTION_FORM_NORMAL_PLUS.source+'|'+FUNCTION_FORM_VAR_COMPLETE.source+'function\\*?|'+FUNCTION_FORM_OBJ_COMPLETE.source+'function\\*?'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE.source+'function\\*?)'+ONLY_ONE_LINEBREAK.source+')');
 
     var FUNCTION_WO_PARAM_PLUS_NAME   = new RegExp('^'+BEFORE_FUNCTION_STARTS.source+'(?:(?:'+FUNCTION_FORM_NORMAL_PLUS_NAME.source+'|'+FUNCTION_FORM_NORMAL_PLUS_PLUS_NAME.source+'|'+FUNCTION_FORM_VAR_COMPLETE_PLUS_NAME.source+'function\\*?|'+FUNCTION_FORM_OBJ_COMPLETE_PLUS_NAME.source+'function\\*?'+FUNCTION_NAME.source+'?|'+FUNCTION_FORM_CLASS_COMPLETE_PLUS_NAME.source+'function\\*?)'+ONLY_ONE_LINEBREAK.source+')');
         
-    var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'([A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*)');
+    var DEEP_FUNCTION_CHECK	= new RegExp(BEFORE_FUNCTION_STARTS.source+'(\'?[A-Za-z\\$\\_][A-Za-z\\$\\_0-9]*\'?)');
 
     var FUNCTION_PARAM         = /\s*\(([^{};]*)\)\s*\{/; // will be validated in checkIfFunction
     var FUNCTION_REGEXP		= new RegExp(FUNCTION_WO_PARAM.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6.source);
