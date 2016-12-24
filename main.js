@@ -143,8 +143,6 @@ define(function (require, exports, module) {
     var FUNCTION_REGEXP_PLUS_NAME	= new RegExp(FUNCTION_WO_PARAM_PLUS_NAME.source+FUNCTION_PARAM.source+'|'+FUNCTION_FORM_ES6_PLUS_NAME.source);
     var FUNCTION_REGEXP_EXTRA_MATCHES = new RegExp(FUNCTION_WO_PARAM.source+'('+FUNCTION_PARAM.source+')');
     var FUNCTION_REGEXP_EXTRA_MATCHES_PLUS_NAME = new RegExp(FUNCTION_WO_PARAM_PLUS_NAME.source+'('+FUNCTION_PARAM.source+')');
-
-    console.log(FUNCTION_REGEXP);
     
     var INDENTATION_REGEXP  = /^([\t\ ]*)/;
 
@@ -343,7 +341,6 @@ define(function (require, exports, module) {
         // get the function code and returns (Object)
         var codeTypes = getFunctionCodeTypes(editor,position,signature.parameters);
         if (codeTypes) {
-            console.log('throw throws: ',codeTypes.throws);
             signature.throws = codeTypes.throws;
             
             signature.returns = codeTypes.returns;
