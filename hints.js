@@ -109,7 +109,7 @@ define(['text!definitions/default.json',
                 // Check for callbacks in the current file
                 var currentDoc = DocumentManager.getCurrentDocument().getText();
                 var callback = null;
-                while((callback = CALLBACK.exec(currentDoc)) != null) {
+                while((callback = CALLBACK.exec(currentDoc)) !== null) {
                     if (callback[1] != "[[callLink]]") {
                         hints.push(callback[1]);
                     }
@@ -125,6 +125,7 @@ define(['text!definitions/default.json',
                         hints.push(funcName);
                     }
                 }
+                break;
                 // no break get all link possibilities as well!
             case "[[Link]]":
                 var functionList = this.createFunctionList();
@@ -150,7 +151,7 @@ define(['text!definitions/default.json',
             case "[[Author]]":
                 var _prefs = PreferencesManager.getExtensionPrefs('funcdocr');
                 var prefsAtName = _prefs.get('atName');
-                if (prefsAtName != '') {
+                if (prefsAtName !== '') {
                     hints.push(prefsAtName);
                 }
                 break;
@@ -233,9 +234,11 @@ define(['text!definitions/default.json',
             return function(a,b) {
                 var matchA = a.indexOf(match);   
                 var matchB = b.indexOf(match);   
-                if (matchA == matchB) return 0;   
+                if (matchA == matchB) {
+                    return 0;   
+                }
                 return (matchA > matchB) ? 1 : -1;   
-            }
+            };
         }
     
     
@@ -252,7 +255,6 @@ define(['text!definitions/default.json',
             var regex = new RegExp(FUNC_DEFINITION.source, 'mi');
 
             var matches 		= null;
-            var multicomment 	= null;
             var match_func 		= false;
             matches = regex.exec(row);
 

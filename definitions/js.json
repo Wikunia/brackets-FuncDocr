@@ -81,7 +81,7 @@
         "var": "@var {[[Type]]} [[Description]]",
         "variation": "@variation [[Description]]",
         "version": "@version [[Description]]",
-        "virtual": "@virtual",
+        "virtual": "@virtual"
     },
     "types": {
         "number": "number",

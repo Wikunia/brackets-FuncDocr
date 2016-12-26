@@ -42,7 +42,6 @@ define(function (require, exports, module) {
     var Menus               = brackets.getModule('command/Menus');
     var Dialogs				= brackets.getModule('widgets/Dialogs');
     var PreferencesManager	= brackets.getModule('preferences/PreferencesManager');
-    var Menus          		= brackets.getModule("command/Menus");
     var MainViewManager		= brackets.getModule("view/MainViewManager");
     var ExtensionUtils		= brackets.getModule('utils/ExtensionUtils');
 
@@ -53,7 +52,7 @@ define(function (require, exports, module) {
          javascript: 	require('text!definitions/js.json'),
          jsx:		 	require('text!definitions/js.json'), // use the js file
          php: 			require('text!definitions/php.json')
-    }
+    };
     var definitions;
 
     ExtensionUtils.loadStyleSheet(module, 'dialog/css/prefs.css');
@@ -286,13 +285,14 @@ define(function (require, exports, module) {
             return null;   
         }
         
+        var docStartLine;
         if (docExists) { // try to update the doc block (parameter added or deleted)
             var doc = getExistingDocSignature(document,position);
-            var docStartLine = doc.startLine;
+            docStartLine = doc.startLine;
             var docSignature = doc.signature;
 
             // merge the docSignature into signature
-            if (docSignature.description != '') {
+            if (docSignature.description !== '') {
                 signature.description = docSignature.description;
             }
             var docSigKeys = Object.keys(docSignature);
@@ -374,7 +374,7 @@ define(function (require, exports, module) {
                 paramNames.push({name:'this.props.'+props[1]});
             }
         }
-        var codeTypes = getFunctionCodeTypes(editor,position,paramNames);
+        codeTypes = getFunctionCodeTypes(editor,position,paramNames);
         if (codeTypes) {
             signature.returns = codeTypes.returns;
             for (var i = 0; i < codeTypes.paramTypes.length; i++) { // add the paramTypes to signature.parameters
@@ -434,6 +434,8 @@ define(function (require, exports, module) {
 
         var params = [];
         // start with the index directly after the description ends
+        var filter_odd = function(v,i) { return ((i % 2) === 1); };
+        var filter_even = function(v,i) { return ((i % 2) === 0); };
         for (var i = t; i < commentTags.length; i++) {
             // get params
             if (commentTags[i].substr(0,5) === 'param') {
@@ -441,8 +443,8 @@ define(function (require, exports, module) {
 
                 var param = {};
                 // get the split delimiters
-                var delimiters = param_parts.filter(function(v,i) { return ((i % 2) === 1); });
-                param_parts = param_parts.filter(function(v,i) { return ((i % 2 === 0)); });
+                var delimiters = param_parts.filter(filter_odd);
+                param_parts = param_parts.filter(filter_even);
                 
                 // if the variable is optional it will start with '[' and there might be '=' inside the '['
                 // => change param_parts so that param_parts[2] is the "name" starting with '[' and ending with ']'
@@ -528,13 +530,16 @@ define(function (require, exports, module) {
                 var tabs = getTabsForATag(currentTag);
                 var tagRegex = getRegexForATag(currentTag);
                 var tagTabsMatches = tagRegex.exec('@'+commentTags[i]);
-                if (!(currentTag in tags)) {
+                if (!tags.hasOwnProperty(currentTag)) {
                     tags[currentTag] = [];
                 }
                 var tagTabObj = {};
                 for (var tt = 1; tt < tagTabsMatches.length; tt++) {
                     tagTabObj[tabs[tt-1]] = tagTabsMatches[tt].trim();   
                 }
+                console.log('tags: ', tags);
+                console.log('currentTag: ', currentTag);
+                console.log('tagTabObj: ', tagTabObj);
                 tags[currentTag].push(tagTabObj);
             }
             
@@ -542,18 +547,25 @@ define(function (require, exports, module) {
             
 
             if (commentTags[i].substr(0,6) === 'return') {
+                var return_tag;
                 if (commentTags[i].substr(0,7) === 'returns') {
-                    var  return_tag = commentTags[i].substr(7).trim(); // delete returns and trim
+                    return_tag = commentTags[i].substr(7).trim(); // delete returns and trim
                 } else {
-                    var  return_tag = commentTags[i].substr(6).trim(); // delete return and trim
+                    return_tag = commentTags[i].substr(6).trim(); // delete return and trim
                 }
                 if(return_tag.charAt(0) == '{') {
                     // get the correct end Curly
                     var bracketCount = 1;
                     for (var t = 1; t < return_tag.length; t++) {
-                        if (return_tag.charAt(t) == '{') bracketCount++;
-                        else if (return_tag.charAt(t) == '}') bracketCount--;
-                        if (bracketCount === 0) break;
+                        if (return_tag.charAt(t) == '{') {
+                            bracketCount++;
+                        }
+                        else if (return_tag.charAt(t) == '}') {
+                            bracketCount--;
+                        }
+                        if (bracketCount === 0) {
+                            break;
+                        }
                     }
                     var endCurly = t;
                     tags.returns = {description: return_tag.substr(endCurly+1).trim(),type:return_tag.substring(1,endCurly).replace(/[ \n]*$/,'')};
@@ -605,8 +617,8 @@ define(function (require, exports, module) {
         if (!("private" in signature) && signatureObj.funcName.charAt(0) == "_") {
             output.push(' * @private');    
         }
-        if (_prefs.get('author_auto') && author != '' && 
-            (authors.length == 0 || authors.indexOf(author) < 0)) {
+        if (_prefs.get('author_auto') && author !== '' && 
+            (authors.length === 0 || authors.indexOf(author) < 0)) {
             output.push(' * @author '+author);    
         }
         
@@ -847,19 +859,25 @@ define(function (require, exports, module) {
             (event.type === 'keyup' && (event.keyCode === KeyEvent.DOM_VK_RETURN ||
                                         event.keyCode === KeyEvent.DOM_VK_BACK_SPACE))) {
             var docBlockPos = insideDocBlock(getPosition(selection,backward));
+            
+            var currentLine;
+            var currentLineNr;
+            var lastLine;
+            
             if (docBlockPos && event.keyCode === KeyEvent.DOM_VK_TAB) {
                 handleTab(editor,event,docBlockPos);
             } else if (event.keyCode === KeyEvent.DOM_VK_RETURN && !hintOpen) {	// no docBlock needed (check it later)
                 // Check for /** in the current line
-                var currentLineNr = editor.getCursorPos().line;
+                currentLineNr = editor.getCursorPos().line;
                 // line - 1 because this triggers after the enter
-                var lastLine 	  = editor.document.getLine(currentLineNr-1);
+                lastLine 	  = editor.document.getLine(currentLineNr-1);
                 var nextLine 	  = editor.document.getLine(currentLineNr+1);
 
+                
                 // last part (the OR) is for the reasonable comments extension by Peter Flynn
                 if (DOCBLOCK_START.test(lastLine) && (!DOCBLOCK_MIDDLE.test(nextLine) || DOCBLOCK_END.test(nextLine))) {
                     // currentLine is empty or *
-                    var currentLine = editor.document.getLine(currentLineNr);
+                    currentLine = editor.document.getLine(currentLineNr);
                     var code 		= editor.document.getRange({ch:0,line:currentLineNr+1},{ch:0,line:editor.lineCount()});
                     var func_matches= checkIfFunction(code);
                     if (func_matches !== false || REACTJS_FUNCTION.test(code)) {
@@ -874,10 +892,10 @@ define(function (require, exports, module) {
                             handleDocBlock();
                         }
                     } else { // for reasonable comments by Peter Flynn
-                        var nextLine = editor.document.getLine(currentLineNr+1);
-                        var code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
+                        nextLine = editor.document.getLine(currentLineNr+1);
+                        code 	 = editor.document.getRange({ch:0,line:currentLineNr+2},{ch:0,line:editor.lineCount()});
                         if (currentLine.trim() == '*' && nextLine.trim() == '*/') {
-                            var func_matches= checkIfFunction(code);
+                            func_matches= checkIfFunction(code);
                             if (func_matches !== false || REACTJS_FUNCTION.test(code)) {
                                 if (deepFunctionCheck(func_matches)) {
                                     editor.setCursorPos(currentLineNr+2,0);
@@ -891,13 +909,13 @@ define(function (require, exports, module) {
                 }
             } else if (event.keyCode === KeyEvent.DOM_VK_BACK_SPACE && !hintOpen) {
                 // Handle backspace of entire line, keeping cursor within doc block
-                var currentLineNr = editor.getCursorPos().line;
-                var currentLine = editor.document.getLine(currentLineNr);
+                currentLineNr = editor.getCursorPos().line;
+                currentLine = editor.document.getLine(currentLineNr);
 
                 // Using DOCBLOCK_MIDDLE_EMPTY, because we only want to remove lines
                 // that are empty.
                 if (DOCBLOCK_MIDDLE_EMPTY.test(currentLine)) {
-                    var lastLine = editor.document.getLine(currentLineNr-1);
+                    lastLine = editor.document.getLine(currentLineNr-1);
                     editor.document.replaceRange(
                             '',
                             {line:currentLineNr,ch:0},
@@ -935,7 +953,7 @@ define(function (require, exports, module) {
         var lastStringCh = "";
         var closedBrackets = 0;
         for (var i = 0; i < param.length; i++) {
-            if ((param[i] == "'" || param[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
+            if ((param[i] == "'" || param[i] == '"') && openStringCh === "" && lastStringCh != "\\") {
                 openStringCh = param[i];   
                 lastStringCh = param[i]; 
                 continue;
@@ -950,13 +968,13 @@ define(function (require, exports, module) {
             } else if (param[i] == "\\" && lastStringCh == "\\") {
                 lastStringCh = "";
                 continue;
-            } else if (param[i] == ")" && openStringCh == "") {
+            } else if (param[i] == ")" && openStringCh === "") {
                 closedBrackets++;
                 lastI = i+1;
             }
             lastStringCh = param[i]; 
         }
-        if (closedBrackets != 0) {
+        if (closedBrackets !== 0) {
             return false;        
         }
         return result;
@@ -1074,7 +1092,7 @@ define(function (require, exports, module) {
                 return '([\\S\\s]*)';   
             }
         });
-        return RegExp(regex);
+        return new RegExp(regex);
     }
     
     /**
@@ -1178,7 +1196,7 @@ define(function (require, exports, module) {
                 if (length === false) {
                     length 		 = match[0].length-match[1].length;
                     // there is no title for @returns
-                    if (match.length > 3 && match[2].indexOf('return') == 0) {
+                    if (match.length > 3 && match[2].indexOf('return') === 0) {
                         length -= match[3].length;
                     }
                 }
@@ -1308,10 +1326,11 @@ define(function (require, exports, module) {
                 }
                 for (var m = 0; m < nrOfPaddings; m++) {
                     if (!index) {
-                      if (m == 0)
+                      if (m === 0) {
                         index = match[1].length + match[2].length;
-                      else
+                      } else {
                         index = match[1].length + maxPadding[0] + match[3].length;
+                      }
                     }
                     if (!currentPadding) {
                         currentPadding = match[m+2].length;
@@ -1414,7 +1433,7 @@ define(function (require, exports, module) {
             var loopPosition = {
                 line : backward ? end : start,
                 ch   : 0
-            }
+            };
 
             var loopSelection = {
                 start : loopPosition,
@@ -1469,7 +1488,7 @@ define(function (require, exports, module) {
 
             // get code types
             if (langId != "php" && ((paramIndex = paramsFirstChars.indexOf(char)) >= 0)) {
-                if (delimiter == '') {
+                if (delimiter === '') {
                     while (paramIndex >= 0) { // parameters can start with the same char
                         // check for currentParameter.
                         if (code.substr(i,params[paramIndex].name.length+1) == params[paramIndex].name+'.') {
@@ -1500,7 +1519,7 @@ define(function (require, exports, module) {
             switch (char) {
                 // throw ne        
                 case 't':    
-                    if (delimiter == "" && /\sthrow new /.test(code.substr(i-1,11))) {
+                    if (delimiter === "" && /\sthrow new /.test(code.substr(i-1,11))) {
                         var matches = /\s*?([\s\S]*?)(\([\s\S]*?\))?;/.exec(code.substr(i+10));
                         if (matches) {
                             var exType = matches[1].trim();
@@ -1514,7 +1533,7 @@ define(function (require, exports, module) {
                     
                 // returns?    
                 case 'r':
-                    if (delimiter == "" && /\sreturn[\[{ ]/.test(code.substr(i-1,8))) {
+                    if (delimiter === "" && /\sreturn[\[{ ]/.test(code.substr(i-1,8))) {
                         returns.bool = true;
                         // try to get the return type
                         var matches = /\s*?([\s\S]*?);/.exec(code.substr(i+7));
@@ -1557,13 +1576,14 @@ define(function (require, exports, module) {
                 case '/':
                     if (!delimiter) {
                         var lookahead = code.charAt(++i);
+                        var endComment;
                         switch (lookahead) {
                             case '/': // comment
-                                var endComment = regexIndexOf(code,/\n/,i);
+                                endComment = regexIndexOf(code,/\n/,i);
                                 i = endComment > i ? endComment+1 : i;
                                 break;
                             case '*': // start of comment (/*)
-                                var endComment = regexIndexOf(code,/\*\//,i);
+                                endComment = regexIndexOf(code,/\*\//,i);
                                 i = endComment > i ? endComment+2 : i;
                                 break;
                             default:
@@ -1621,7 +1641,7 @@ define(function (require, exports, module) {
         }
         
         for(var i = 0; i < input.length; i++) {
-            if ((input[i] == "'" || input[i] == '"') && openStringCh == "" && lastStringCh != "\\") {
+            if ((input[i] == "'" || input[i] == '"') && openStringCh === "" && lastStringCh != "\\") {
                 openStringCh = input[i];   
                 lastStringCh = input[i]; 
                 continue;
@@ -1636,7 +1656,7 @@ define(function (require, exports, module) {
             } else if (input[i] == "\\" && lastStringCh == "\\") {
                 lastStringCh = "";
                 continue;
-            } else if (input[i] == "," && openStringCh == "") {
+            } else if (input[i] == "," && openStringCh === "") {
                 parameters.push(input.substring(lastI,i));
                 lastI = i+1;
             }
@@ -2007,7 +2027,7 @@ define(function (require, exports, module) {
         if (editorHolder) {
             editorHolder.addEventListener("keydown", handleKey, true);
             editorHolder.addEventListener("keyup", handleKey, true);
-            editorHolder.addEventListener("dblclick", handleClick, true)
+            editorHolder.addEventListener("dblclick", handleClick, true);
         }
 
         var docrHints = new DocrHint({
