@@ -9,12 +9,13 @@
         "returns": "@returns {[[Type]]} [[Description]]"
     },
 	"types": {
-			"number": 	"Number",
-			"string": 	"String",
+			 "number": 	"Number",
+			 "string": 	"String",
 			"boolean":	"Boolean",
-			"array": 	"Array",
-			"object": 	"Object",
-			"regexp": 	"RegExp",
-			"function": "Function"
+			  "array": 	"Array",
+			 "object": 	"Object",
+			 "regexp": 	"RegExp",
+		       "function":      "Function",
+			  "mixed":      "Mixed"
 	}
 }
