@@ -2004,6 +2004,7 @@ define(function (require, exports, module) {
         allDefinitions.jsx			= allDefinitions.javascript;
         allDefinitions.coffeescript = allDefinitions.javascript;
         allDefinitions.livescript 	= allDefinitions.javascript;
+        allDefinitions.typescript 	= allDefinitions.javascript;
 
 
         CommandManager.register('Funcdocr Annotate', COMMAND_ID, handleDocBlock);
@@ -2036,7 +2037,7 @@ define(function (require, exports, module) {
             FUNCTION_REGEXP:FUNCTION_REGEXP
         });
 
-        CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"php", "jsx"], 0);
+        CodeHintManager.registerHintProvider(docrHints, ["javascript", "coffeescript", "livescript" ,"typescript", "php", "jsx"], 0);
     });
 
 
